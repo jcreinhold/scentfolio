@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { listPerfumes } from "../api";
+import { listPerfumes, deletePerfume } from "../api";
 import type { Perfume } from "../types";
 import PerfumeCard from "../components/PerfumeCard";
 
@@ -16,6 +16,11 @@ export default function Collection() {
     listPerfumes({ q: q || undefined, family: family || undefined, fmt: fmt || undefined })
       .then(setPerfumes);
   }, [q, family, fmt]);
+
+  async function handleDelete(id: number) {
+    await deletePerfume(id);
+    setPerfumes((prev) => prev.filter((p) => p.id !== id));
+  }
 
   return (
     <div>
@@ -34,7 +39,7 @@ export default function Collection() {
         </select>
       </div>
       <div className="grid">
-        {perfumes.map((p) => <PerfumeCard key={p.id} p={p} />)}
+        {perfumes.map((p) => <PerfumeCard key={p.id} p={p} onDelete={handleDelete} />)}
       </div>
     </div>
   );

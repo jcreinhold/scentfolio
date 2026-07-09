@@ -1,18 +1,26 @@
 import { useEffect, useState } from "react";
-import { useParams, Link } from "react-router-dom";
-import { getPerfume, updatePerfume } from "../api";
+import { useParams, useNavigate, Link } from "react-router-dom";
+import { getPerfume, updatePerfume, deletePerfume } from "../api";
 import type { Perfume, Tier } from "../types";
 
 const TIERS: Tier[] = ["top", "heart", "base"];
 
 export default function PerfumeDetail() {
   const { id } = useParams();
+  const nav = useNavigate();
   const [p, setP] = useState<Perfume | null>(null);
   const [impressions, setImpressions] = useState("");
 
   useEffect(() => {
     getPerfume(Number(id)).then((data) => { setP(data); setImpressions(data.my_impressions); });
   }, [id]);
+
+  async function remove() {
+    if (p && window.confirm(`Remove ${p.name} from your collection?`)) {
+      await deletePerfume(p.id);
+      nav("/");
+    }
+  }
 
   if (!p) return <div>Loading…</div>;
 
@@ -49,6 +57,10 @@ export default function PerfumeDetail() {
                 onChange={(e) => setImpressions(e.target.value)} />
       <button onClick={() => updatePerfume(p.id, { my_impressions: impressions })}
               style={{ marginTop: 8 }}>Save impressions</button>
+
+      <div style={{ marginTop: 32, borderTop: "1px solid #eee", paddingTop: 16 }}>
+        <button className="btn-danger" onClick={remove}>Remove from collection</button>
+      </div>
     </div>
   );
 }

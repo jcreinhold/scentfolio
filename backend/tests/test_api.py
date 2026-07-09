@@ -48,3 +48,12 @@ def test_update_impressions(client):
     pid = _create(client).json()["id"]
     r = client.patch(f"/api/perfumes/{pid}", json={"my_impressions": "Great!"})
     assert r.json()["my_impressions"] == "Great!"
+
+def test_delete_perfume(client):
+    pid = _create(client).json()["id"]
+    r = client.delete(f"/api/perfumes/{pid}")
+    assert r.status_code == 204
+    assert client.get(f"/api/perfumes/{pid}").status_code == 404
+
+def test_delete_missing_perfume_returns_404(client):
+    assert client.delete("/api/perfumes/999").status_code == 404

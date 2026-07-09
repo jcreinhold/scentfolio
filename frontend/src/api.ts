@@ -48,6 +48,11 @@ export async function updatePerfume(
   return r.json();
 }
 
+export async function deletePerfume(id: number): Promise<void> {
+  const r = await fetch(`/api/perfumes/${id}`, { method: "DELETE" });
+  if (!r.ok) throw new Error("Delete failed");
+}
+
 export const checkDuplicate = (name: string, house: string) =>
   getJSON<{ duplicate: boolean; id: number | null }>(
     `/api/perfumes/check-duplicate?name=${encodeURIComponent(name)}&house=${encodeURIComponent(house)}`);
