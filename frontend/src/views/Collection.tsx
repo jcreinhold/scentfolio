@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { listPerfumes, deletePerfume } from "../api";
+import { listPerfumes, deletePerfume, updatePerfume } from "../api";
 import type { Perfume } from "../types";
 import PerfumeCard from "../components/PerfumeCard";
 
@@ -22,8 +22,30 @@ export default function Collection() {
     setPerfumes((prev) => prev.filter((p) => p.id !== id));
   }
 
+  async function handleSetFormats(id: number, formats: string[]) {
+    // Optimistic update; revert on failure.
+    const prev = perfumes;
+    setPerfumes((cur) => cur.map((p) => (p.id === id ? { ...p, formats } : p)));
+    try {
+      await updatePerfume(id, { formats });
+    } catch {
+      setPerfumes(prev);
+    }
+  }
+
+  const filtering = Boolean(q || family || fmt);
+
   return (
     <div>
+      <div className="page-head">
+        <div className="eyebrow">The Collection</div>
+        <h2>Your fragrance wardrobe</h2>
+        <div className="page-sub">
+          {perfumes.length} {perfumes.length === 1 ? "scent" : "scents"}
+          {filtering ? " matching your filters" : " on the shelf"}
+        </div>
+      </div>
+
       <input className="search" placeholder="Search names or notes…"
              value={q} onChange={(e) => setQ(e.target.value)} />
       <div className="filters">
@@ -38,9 +60,19 @@ export default function Collection() {
           <option value="sample">Sample</option>
         </select>
       </div>
-      <div className="grid">
-        {perfumes.map((p) => <PerfumeCard key={p.id} p={p} onDelete={handleDelete} />)}
-      </div>
+
+      {perfumes.length === 0 ? (
+        <div className="empty">
+          <div className="empty-title">{filtering ? "Nothing matches" : "Your shelf is empty"}</div>
+          <div>{filtering ? "Try loosening a filter." : "Add your first scent to begin the archive."}</div>
+        </div>
+      ) : (
+        <div className="grid">
+          {perfumes.map((p) => (
+            <PerfumeCard key={p.id} p={p} onDelete={handleDelete} onSetFormats={handleSetFormats} />
+          ))}
+        </div>
+      )}
     </div>
   );
 }

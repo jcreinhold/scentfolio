@@ -28,6 +28,21 @@ it("removes a perfume from the grid when its ✕ is confirmed", async () => {
   await waitFor(() => expect(screen.queryByText("Sauvage")).not.toBeInTheDocument());
 });
 
+it("toggles a size on a card and persists it", async () => {
+  vi.spyOn(api, "listPerfumes").mockResolvedValue([sauvage as any]);
+  const upd = vi.spyOn(api, "updatePerfume").mockResolvedValue({ ...sauvage, formats: ["full", "travel"] } as any);
+  render(<MemoryRouter><Collection /></MemoryRouter>);
+  await waitFor(() => expect(screen.getByText("Sauvage")).toBeInTheDocument());
+
+  // sauvage starts with "full"; adding "travel" should persist ["full","travel"].
+  fireEvent.click(screen.getByLabelText("Add Travel size for Sauvage"));
+  await waitFor(() => expect(upd).toHaveBeenCalledWith(1, { formats: ["full", "travel"] }));
+
+  // "full" is still active after the optimistic add; removing it leaves ["travel"].
+  fireEvent.click(screen.getByLabelText("Remove Full size for Sauvage"));
+  await waitFor(() => expect(upd).toHaveBeenCalledWith(1, { formats: ["travel"] }));
+});
+
 it("does not delete when the confirm is dismissed", async () => {
   vi.spyOn(api, "listPerfumes").mockResolvedValue([sauvage as any]);
   const del = vi.spyOn(api, "deletePerfume").mockResolvedValue(undefined);

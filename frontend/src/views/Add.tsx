@@ -2,10 +2,12 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { lookupPerfume, createPerfume, checkDuplicate } from "../api";
 import type { Draft, Format } from "../types";
+import BatchAdd from "./BatchAdd";
 
 const FORMATS: Format[] = ["full", "travel", "sample"];
 
 export default function Add() {
+  const [mode, setMode] = useState<"single" | "batch">("single");
   const [name, setName] = useState("");
   const [draft, setDraft] = useState<Draft | null>(null);
   const [error, setError] = useState("");
@@ -53,7 +55,20 @@ export default function Add() {
 
   return (
     <div>
-      <h2>Add a perfume</h2>
+      <div className="page-head">
+        <div className="eyebrow">New Acquisition</div>
+        <h2>Add a perfume</h2>
+        <div className="page-sub">Look one up by name, or paste a whole list to add in bulk.</div>
+      </div>
+      <div className="filters" role="tablist">
+        <button role="tab" aria-selected={mode === "single"} disabled={mode === "single"}
+                onClick={() => setMode("single")}>One at a time</button>
+        <button role="tab" aria-selected={mode === "batch"} disabled={mode === "batch"}
+                onClick={() => setMode("batch")}>Batch add</button>
+      </div>
+
+      {mode === "batch" ? <BatchAdd /> : (
+      <>
       <div style={{ display: "flex", gap: 8 }}>
         <input className="search" placeholder="Add a perfume by name…"
                value={name} onChange={(e) => setName(e.target.value)} />
@@ -93,6 +108,8 @@ export default function Add() {
           ))}
           <button onClick={save} style={{ marginTop: 12 }}>Save to collection</button>
         </div>
+      )}
+      </>
       )}
     </div>
   );

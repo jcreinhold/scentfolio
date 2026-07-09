@@ -11,13 +11,17 @@ export default function App() {
   return (
     <BrowserRouter>
       <div className="layout">
-        <nav className="sidebar">
-          <div className="brand">🧴 Scentfolio</div>
-          <NavLink to="/">Collection</NavLink>
-          <NavLink to="/add">Add</NavLink>
-          <NavLink to="/insights">Insights</NavLink>
-          <NavLink to="/glossary">Note Glossary</NavLink>
-        </nav>
+        <div className="sidebar">
+          <div className="brand">Scentfolio</div>
+          <div className="brand-eyebrow">Personal Fragrance Archive</div>
+          <nav>
+            <NavLink to="/" end>Collection</NavLink>
+            <NavLink to="/add">Add a Scent</NavLink>
+            <NavLink to="/insights">Insights</NavLink>
+            <NavLink to="/glossary">Note Glossary</NavLink>
+          </nav>
+          <div className="sidebar-foot">Est. in your vanity</div>
+        </div>
         <main className="content">
           <Routes>
             <Route path="/" element={<Collection />} />

@@ -7,7 +7,11 @@ export default function Glossary() {
   useEffect(() => { listNotes().then(setNotes); }, []);
   return (
     <div>
-      <h2>Note Glossary</h2>
+      <div className="page-head">
+        <div className="eyebrow">The Lexicon</div>
+        <h2>Note Glossary</h2>
+        <div className="page-sub">{notes.length} notes across your collection.</div>
+      </div>
       <div className="grid">
         {notes.map((n) => (
           <Link key={n.id} to={`/note/${encodeURIComponent(n.name)}`} className="card">

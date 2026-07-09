@@ -15,21 +15,29 @@ export default function Insights() {
 
   return (
     <div>
-      <h2>Insights</h2>
+      <div className="page-head">
+        <div className="eyebrow">Patterns</div>
+        <h2>Insights</h2>
+        <div className="page-sub">What your collection reveals about your taste.</div>
+      </div>
 
       <div className="label">Most common notes</div>
       <ResponsiveContainer width="100%" height={240}>
         <BarChart data={notes.slice(0, 12)}>
-          <XAxis dataKey="note" /><YAxis allowDecimals={false} /><Tooltip />
-          <Bar dataKey="count" fill="#7c5cff" />
+          <XAxis dataKey="note" tick={{ fontSize: 12, fill: "#938975" }} />
+          <YAxis allowDecimals={false} tick={{ fontSize: 12, fill: "#938975" }} />
+          <Tooltip cursor={{ fill: "rgba(157,74,36,0.08)" }} />
+          <Bar dataKey="count" fill="#b0562b" radius={[4, 4, 0, 0]} />
         </BarChart>
       </ResponsiveContainer>
 
       <div className="label">Scent families</div>
       <ResponsiveContainer width="100%" height={240}>
         <BarChart data={families}>
-          <XAxis dataKey="family" /><YAxis allowDecimals={false} /><Tooltip />
-          <Bar dataKey="count" fill="#0ea5a0" />
+          <XAxis dataKey="family" tick={{ fontSize: 12, fill: "#938975" }} />
+          <YAxis allowDecimals={false} tick={{ fontSize: 12, fill: "#938975" }} />
+          <Tooltip cursor={{ fill: "rgba(95,107,72,0.08)" }} />
+          <Bar dataKey="count" fill="#5f6b48" radius={[4, 4, 0, 0]} />
         </BarChart>
       </ResponsiveContainer>
 

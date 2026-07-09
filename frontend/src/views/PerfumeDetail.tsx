@@ -26,10 +26,13 @@ export default function PerfumeDetail() {
 
   return (
     <div>
-      <h2>{p.name}</h2>
-      <div className="card-sub">{p.house}{p.year ? ` · ${p.year}` : ""}
-        {p.perfumer ? ` · Perfumer: ${p.perfumer}` : ""}
-        {p.scent_family ? ` · ${p.scent_family}` : ""}</div>
+      <div className="page-head">
+        <div className="eyebrow">From the archive</div>
+        <h2>{p.name}</h2>
+        <div className="card-sub">{p.house}{p.year ? ` · ${p.year}` : ""}
+          {p.perfumer ? ` · Perfumer: ${p.perfumer}` : ""}
+          {p.scent_family ? ` · ${p.scent_family}` : ""}</div>
+      </div>
 
       <div className="label">Note pyramid</div>
       <div className="pyramid">
