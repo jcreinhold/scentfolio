@@ -1,9 +1,17 @@
 from fastapi import FastAPI, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from app.deps import get_session
 from app import repository as repo, queries
 from app.schemas import PerfumeCreate, PerfumeUpdate
+from app.agent import lookup as live_lookup, LookupError
+
+class LookupRequest(BaseModel):
+    name: str
+
+def get_lookup():
+    return live_lookup
 
 app = FastAPI(title="Scentfolio")
 app.add_middleware(CORSMiddleware, allow_origins=["http://localhost:5173"],
@@ -13,9 +21,22 @@ app.add_middleware(CORSMiddleware, allow_origins=["http://localhost:5173"],
 def health():
     return {"status": "ok"}
 
+@app.post("/api/lookup")
+def lookup_perfume(req: LookupRequest, lookup=Depends(get_lookup)):
+    try:
+        draft = lookup(req.name)
+    except LookupError as e:
+        raise HTTPException(422, f"Lookup failed: {e}")
+    return draft.model_dump()
+
 @app.post("/api/perfumes", status_code=201)
 def create_perfume(data: PerfumeCreate, session: Session = Depends(get_session)):
     return repo.create_perfume(session, data)
+
+@app.get("/api/perfumes/check-duplicate")
+def check_duplicate(name: str, house: str = "", session: Session = Depends(get_session)):
+    dup = repo.find_duplicate(session, name, house)
+    return {"duplicate": dup is not None, "id": dup.id if dup else None}
 
 @app.get("/api/perfumes")
 def list_perfumes(q: str | None = None, family: str | None = None,
