@@ -23,7 +23,13 @@ SYSTEM_PROMPT = (
     "object (no prose) with keys: name, house, perfumer, year, scent_family, "
     "description, source_urls (list), notes (list of {name, tier one of "
     "top/heart/base, family}), confidence (high/medium/low). scent_family must be one "
-    f"of: {sorted(VALID_FAMILIES)}. If unsure of a field use null."
+    f"of: {sorted(VALID_FAMILIES)}. If unsure of a field use null. "
+    "IMPORTANT for notes: use the CANONICAL, generic note name in lowercase and "
+    "singular, WITHOUT any origin or qualifier adjective, so the same note matches "
+    "across different perfumes. For example use 'bergamot' (not 'Calabrian bergamot' "
+    "or 'Italian bergamot'), 'rose' (not 'Bulgarian rose'), 'musk' (not 'white musk'), "
+    "'pepper' (not 'Sichuan pepper'). Keep genuinely distinct notes distinct "
+    "(e.g. 'pink pepper' vs 'black pepper' only if the source clearly distinguishes them)."
 )
 
 def _isolate_json(raw_text: str) -> str:
