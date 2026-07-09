@@ -10,6 +10,7 @@
 
 **Conventions:**
 - Backend lives in `backend/`, frontend in `frontend/`.
+- **Environment:** the backend venv already exists at `backend/.venv` (Python 3.13.7, created with `uv venv --python 3.13`). Activate it with `source .venv/bin/activate` before running anything. Install packages with `uv pip install`, not plain `pip`. Do NOT recreate the venv.
 - Run backend commands from `backend/` with the venv active. Run frontend commands from `frontend/`.
 - Scent family taxonomy (fixed enum used for classification & filtering): `Citrus`, `Floral`, `Woody`, `Oriental`, `Fresh`, `Aromatic`, `Fougere`, `Chypre`, `Gourmand`, `Leather`, `Other`.
 - Formats enum: `full`, `travel`, `sample`.
