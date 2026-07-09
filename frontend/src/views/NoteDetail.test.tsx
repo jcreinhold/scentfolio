@@ -1,0 +1,18 @@
+import { render, screen, waitFor } from "@testing-library/react";
+import { MemoryRouter, Routes, Route } from "react-router-dom";
+import { vi, it, expect } from "vitest";
+import NoteDetail from "./NoteDetail";
+import * as api from "../api";
+
+it("shows note info and perfumes containing it", async () => {
+  vi.spyOn(api, "getNote").mockResolvedValue({
+    name: "bergamot", family: "Citrus", description: "Bright citrus.",
+    perfumes: [{ id: 1, name: "Sauvage", house: "Dior" }],
+  });
+  render(<MemoryRouter initialEntries={["/note/bergamot"]}>
+    <Routes><Route path="/note/:name" element={<NoteDetail />} /></Routes>
+  </MemoryRouter>);
+  await waitFor(() => expect(screen.getByText("bergamot")).toBeInTheDocument());
+  expect(screen.getByText("Bright citrus.")).toBeInTheDocument();
+  expect(screen.getByText(/Sauvage/)).toBeInTheDocument();
+});
