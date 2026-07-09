@@ -1,0 +1,25 @@
+* { box-sizing: border-box; }
+body { margin: 0; font-family: system-ui, sans-serif; color: #1a1a1a; }
+.layout { display: flex; min-height: 100vh; }
+.sidebar { width: 180px; background: #1a1a1a; color: #eee; padding: 20px 14px; }
+.sidebar .brand { font-weight: 700; margin-bottom: 20px; }
+.sidebar a { display: block; color: #ccc; text-decoration: none; padding: 8px 10px;
+  border-radius: 6px; margin-bottom: 4px; }
+.sidebar a.active { background: #333; color: #fff; }
+.content { flex: 1; padding: 24px; max-width: 900px; }
+.search { width: 100%; padding: 10px; font-size: 15px; border: 1px solid #ccc; border-radius: 8px; }
+.filters { display: flex; gap: 8px; margin: 12px 0; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
+.card { display: block; border: 1px solid #ddd; border-radius: 10px; padding: 12px; text-decoration: none; color: inherit; }
+.card-top { display: flex; justify-content: space-between; align-items: start; }
+.card-name { font-weight: 600; }
+.card-sub { font-size: 12px; opacity: .6; }
+.card-notes { margin-top: 8px; display: flex; gap: 4px; flex-wrap: wrap; }
+.chip { font-size: 10px; background: #eef; padding: 2px 8px; border-radius: 10px; }
+.badge { font-size: 9px; padding: 2px 6px; border-radius: 10px; color: #fff; text-transform: uppercase; }
+.badge-full { background: #1a1a1a; } .badge-travel { background: #0ea5a0; } .badge-sample { background: #7c5cff; }
+.pyramid div { padding: 8px 12px; margin-bottom: 4px; border-left: 3px solid; }
+.pyramid .top { background: #f5f0ff; border-color: #a78bfa; }
+.pyramid .heart { background: #fff5f0; border-color: #fb923c; }
+.pyramid .base { background: #f0fff5; border-color: #34d399; }
+.label { font-size: 11px; letter-spacing: .5px; text-transform: uppercase; opacity: .6; margin-top: 16px; }
