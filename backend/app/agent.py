@@ -3,6 +3,8 @@ import os
 from typing import Literal
 from pydantic import BaseModel, ValidationError
 from app.schemas import PerfumeCreate
+from dotenv import load_dotenv
+load_dotenv()
 
 VALID_FAMILIES = {"Citrus", "Floral", "Woody", "Oriental", "Fresh", "Aromatic",
                   "Fougere", "Chypre", "Gourmand", "Leather", "Other"}
