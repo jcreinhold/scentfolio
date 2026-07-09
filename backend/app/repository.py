@@ -1,4 +1,4 @@
-from sqlalchemy import select
+from sqlalchemy import select, func
 from sqlalchemy.orm import Session
 from app.models import Perfume, Note, PerfumeNote
 from app.schemas import PerfumeCreate, PerfumeOut, NoteOut, PerfumeUpdate
@@ -80,5 +80,7 @@ def perfumes_with_note(session: Session, note_name: str) -> list[Perfume]:
     return list(session.execute(stmt).scalars().unique().all())
 
 def find_duplicate(session: Session, name: str, house: str) -> Perfume | None:
-    stmt = select(Perfume).where(Perfume.name == name, Perfume.house == house)
+    stmt = select(Perfume).where(
+        func.lower(Perfume.name) == name.strip().lower(),
+        func.lower(Perfume.house) == house.strip().lower())
     return session.execute(stmt).scalars().first()

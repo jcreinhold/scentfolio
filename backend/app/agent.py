@@ -1,5 +1,6 @@
 import json
 import os
+import re
 from typing import Literal
 from pydantic import BaseModel, ValidationError
 from app.schemas import PerfumeCreate
@@ -25,10 +26,20 @@ SYSTEM_PROMPT = (
     f"of: {sorted(VALID_FAMILIES)}. If unsure of a field use null."
 )
 
+def _isolate_json(raw_text: str) -> str:
+    text = raw_text.strip()
+    fence = re.search(r"```(?:json)?\s*(.*?)```", text, re.DOTALL)
+    if fence:
+        return fence.group(1).strip()
+    start, end = text.find("{"), text.rfind("}")
+    if start != -1 and end > start:
+        return text[start:end + 1]
+    return text
+
 def extract_draft(raw_text: str) -> Draft:
     """Parse the model's JSON text into a validated Draft."""
     try:
-        payload = json.loads(raw_text)
+        payload = json.loads(_isolate_json(raw_text))
     except json.JSONDecodeError as e:
         raise LookupError(f"Model did not return JSON: {raw_text[:200]}") from e
     if payload.get("scent_family") not in VALID_FAMILIES:

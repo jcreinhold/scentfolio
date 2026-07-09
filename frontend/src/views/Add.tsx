@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { lookupPerfume, createPerfume } from "../api";
+import { lookupPerfume, createPerfume, checkDuplicate } from "../api";
 import type { Draft, Format } from "../types";
 
 const FORMATS: Format[] = ["full", "travel", "sample"];
@@ -10,11 +10,21 @@ export default function Add() {
   const [draft, setDraft] = useState<Draft | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [dupWarning, setDupWarning] = useState(false);
   const nav = useNavigate();
 
   async function doLookup() {
-    setError(""); setLoading(true);
-    try { setDraft(await lookupPerfume(name)); }
+    setError(""); setLoading(true); setDupWarning(false);
+    try {
+      const d = await lookupPerfume(name);
+      setDraft(d);
+      try {
+        const dup = await checkDuplicate(d.perfume.name, d.perfume.house);
+        setDupWarning(dup.duplicate);
+      } catch {
+        setDupWarning(false);
+      }
+    }
     catch (e: any) { setError(e.message); }
     finally { setLoading(false); }
   }
@@ -33,8 +43,12 @@ export default function Add() {
 
   async function save() {
     if (!draft) return;
-    const created = await createPerfume(draft.perfume);
-    nav(`/perfume/${created.id}`);
+    try {
+      const created = await createPerfume(draft.perfume);
+      nav(`/perfume/${created.id}`);
+    } catch (e: any) {
+      setError(e.message);
+    }
   }
 
   return (
@@ -51,6 +65,7 @@ export default function Add() {
 
       {draft && (
         <div>
+          {dupWarning && <p style={{ color: "#b45309" }}>⚠️ You already have a perfume with this name and house in your collection.</p>}
           <p className="label">{draft.confidence} confidence — verify against sources before saving</p>
           <input className="search" value={draft.perfume.name}
                  onChange={(e) => patch("name", e.target.value)} />

@@ -48,6 +48,10 @@ export async function updatePerfume(
   return r.json();
 }
 
+export const checkDuplicate = (name: string, house: string) =>
+  getJSON<{ duplicate: boolean; id: number | null }>(
+    `/api/perfumes/check-duplicate?name=${encodeURIComponent(name)}&house=${encodeURIComponent(house)}`);
+
 export const getNote = (name: string) =>
   getJSON<{ name: string; family: string | null; description: string;
             perfumes: { id: number; name: string; house: string }[] }>(

@@ -26,3 +26,7 @@ def test_find_perfumes_by_note(session):
     repo.create_perfume(session, _sample())
     results = repo.perfumes_with_note(session, "bergamot")
     assert [p.name for p in results] == ["Sauvage"]
+
+def test_find_duplicate_is_case_insensitive(session):
+    repo.create_perfume(session, PerfumeCreate(name="Aventus", house="Creed", notes=[]))
+    assert repo.find_duplicate(session, "aventus", "CREED") is not None
