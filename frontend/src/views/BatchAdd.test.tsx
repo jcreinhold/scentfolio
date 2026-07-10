@@ -7,7 +7,7 @@ import * as api from "../api";
 function draftFor(name: string, house = "House") {
   return {
     confidence: "high",
-    perfume: { name, house, perfumer: null, year: null, scent_family: "Fresh",
+    perfume: { name, house, perfumer: null, year: null, scent_families: ["Fresh"],
       description: "", my_impressions: "", formats: [], source_urls: [], notes: [] },
   } as any;
 }

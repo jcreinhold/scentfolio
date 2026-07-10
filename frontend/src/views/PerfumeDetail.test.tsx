@@ -6,7 +6,7 @@ import * as api from "../api";
 
 const perfume = {
   id: 1, name: "Aventus", house: "Creed", perfumer: "Olivier Creed", year: 2010,
-  scent_family: "Chypre", description: "Smoky.", my_impressions: "old note",
+  scent_families: ["Chypre", "Woody"], description: "Smoky.", my_impressions: "old note",
   formats: ["full"], source_urls: [], notes: [
     { id: 1, name: "bergamot", tier: "top" }, { id: 2, name: "birch", tier: "heart" }],
 };
@@ -19,6 +19,8 @@ it("shows pyramid and saves impressions", async () => {
   </MemoryRouter>);
   await waitFor(() => expect(screen.getByText("Aventus")).toBeInTheDocument());
   expect(screen.getByText("bergamot")).toBeInTheDocument();
+  expect(screen.getByText("Chypre")).toBeInTheDocument();
+  expect(screen.getByText("Woody")).toBeInTheDocument();
   fireEvent.change(screen.getByLabelText(/impressions/i), { target: { value: "new" } });
   fireEvent.click(screen.getByText(/save impressions/i));
   await waitFor(() => expect(upd).toHaveBeenCalledWith(1, { my_impressions: "new" }));

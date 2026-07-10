@@ -1,6 +1,6 @@
 import json
 import pytest
-from app.agent import extract_draft, describe_notes, LookupError
+from app.agent import extract_draft, describe_notes, classify_families, LookupError
 
 
 class _Block:
@@ -30,7 +30,7 @@ def _fake_response(payload: dict):
 def test_extract_draft_parses_valid_payload():
     raw = _fake_response({
         "name": "Aventus", "house": "Creed", "perfumer": "Olivier Creed",
-        "year": 2010, "scent_family": "Chypre",
+        "year": 2010, "scent_families": ["Chypre", "Fruity"],
         "description": "Fruity smoky signature scent.",
         "source_urls": ["https://www.fragrantica.com/perfume/x"],
         "notes": [{"name": "pineapple", "tier": "top"},
@@ -40,11 +40,18 @@ def test_extract_draft_parses_valid_payload():
     assert draft.perfume.name == "Aventus"
     assert draft.confidence == "high"
     assert draft.perfume.notes[0].name == "pineapple"
+    assert draft.perfume.scent_families == ["Chypre", "Fruity"]
 
-def test_extract_draft_coerces_unknown_family_to_other():
-    raw = _fake_response({"name": "X", "scent_family": "Spacewood", "notes": []})
+def test_extract_draft_drops_invalid_families_and_dedupes():
+    raw = _fake_response({"name": "X",
+                          "scent_families": ["Gourmand", "Spacewood", "Gourmand", "Green"],
+                          "notes": []})
     draft = extract_draft(raw)
-    assert draft.perfume.scent_family == "Other"
+    assert draft.perfume.scent_families == ["Gourmand", "Green"]
+
+def test_extract_draft_missing_families_defaults_empty():
+    draft = extract_draft(_fake_response({"name": "X", "notes": []}))
+    assert draft.perfume.scent_families == []
 
 def test_extract_draft_rejects_non_json():
     with pytest.raises(LookupError):
@@ -52,7 +59,7 @@ def test_extract_draft_rejects_non_json():
 
 def test_extract_draft_handles_json_code_fence():
     raw = "Here are the details I found:\n```json\n" + json.dumps({
-        "name": "Aventus", "house": "Creed", "scent_family": "Chypre",
+        "name": "Aventus", "house": "Creed", "scent_families": ["Chypre"],
         "notes": [{"name": "bergamot", "tier": "top"}]}) + "\n```\nHope that helps!"
     draft = extract_draft(raw)
     assert draft.perfume.name == "Aventus"
@@ -60,7 +67,7 @@ def test_extract_draft_handles_json_code_fence():
 
 def test_extract_draft_handles_preamble_without_fence():
     raw = "Sure! The perfume is: " + json.dumps({
-        "name": "Sauvage", "house": "Dior", "scent_family": "Fresh", "notes": []})
+        "name": "Sauvage", "house": "Dior", "scent_families": ["Fresh"], "notes": []})
     draft = extract_draft(raw)
     assert draft.perfume.name == "Sauvage"
     assert draft.perfume.house == "Dior"
@@ -93,3 +100,22 @@ def test_describe_notes_handles_code_fence():
 def test_describe_notes_rejects_non_json():
     with pytest.raises(LookupError):
         describe_notes(["rose"], client=_FakeClient("I cannot help with that."))
+
+
+def test_classify_families_returns_valid_tags():
+    client = _FakeClient(json.dumps({"families": ["Gourmand", "Woody"]}))
+    out = classify_families("Milk", "Snif", ["milk", "sandalwood"], client=client)
+    assert out == ["Gourmand", "Woody"]
+
+def test_classify_families_drops_invalid_and_dedupes():
+    client = _FakeClient(json.dumps({"families": ["Floral", "Nonsense", "Floral", "Fruity"]}))
+    assert classify_families("Pony Boy", "Snif", [], client=client) == ["Floral", "Fruity"]
+
+def test_classify_families_handles_preamble_and_fence():
+    client = _FakeClient("Based on its accords:\n```json\n"
+                         + json.dumps({"families": ["Green", "Gourmand"]}) + "\n```")
+    assert classify_families("Dandelion Butter", "Snif", [], client=client) == ["Green", "Gourmand"]
+
+def test_classify_families_rejects_non_json():
+    with pytest.raises(LookupError):
+        classify_families("X", "Y", [], client=_FakeClient("no idea"))

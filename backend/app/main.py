@@ -5,7 +5,9 @@ from sqlalchemy.orm import Session
 from app.deps import get_session
 from app import repository as repo, queries
 from app.schemas import PerfumeCreate, PerfumeUpdate
-from app.agent import lookup as live_lookup, describe_notes as live_describe, LookupError
+from concurrent.futures import ThreadPoolExecutor
+from app.agent import (lookup as live_lookup, describe_notes as live_describe,
+                       classify_families as live_classify, LookupError)
 
 class LookupRequest(BaseModel):
     name: str
@@ -16,7 +18,11 @@ def get_lookup():
 def get_note_describer():
     return live_describe
 
+def get_family_classifier():
+    return live_classify
+
 DESCRIBE_CHUNK = 25
+RECLASSIFY_WORKERS = 4
 
 app = FastAPI(title="Scentfolio")
 app.add_middleware(CORSMiddleware, allow_origins=["http://localhost:5173"],
@@ -37,6 +43,26 @@ def lookup_perfume(req: LookupRequest, lookup=Depends(get_lookup)):
 @app.post("/api/perfumes", status_code=201)
 def create_perfume(data: PerfumeCreate, session: Session = Depends(get_session)):
     return repo.create_perfume(session, data)
+
+@app.post("/api/perfumes/reclassify")
+def reclassify_perfumes(session: Session = Depends(get_session),
+                        classify=Depends(get_family_classifier)):
+    perfumes = repo.list_perfumes(session)
+
+    def work(p):
+        try:
+            return p.id, classify(p.name, p.house, [n.name for n in p.notes])
+        except LookupError:
+            return p.id, None
+
+    # Classify concurrently (network-bound, no DB); apply updates single-threaded.
+    with ThreadPoolExecutor(max_workers=RECLASSIFY_WORKERS) as ex:
+        results = list(ex.map(work, perfumes))
+    updated = 0
+    for pid, families in results:
+        if families and repo.set_scent_families(session, pid, families):
+            updated += 1
+    return {"updated": updated}
 
 @app.get("/api/perfumes/check-duplicate")
 def check_duplicate(name: str, house: str = "", session: Session = Depends(get_session)):

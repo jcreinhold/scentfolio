@@ -30,8 +30,12 @@ export default function PerfumeDetail() {
         <div className="eyebrow">From the archive</div>
         <h2>{p.name}</h2>
         <div className="card-sub">{p.house}{p.year ? ` · ${p.year}` : ""}
-          {p.perfumer ? ` · Perfumer: ${p.perfumer}` : ""}
-          {p.scent_family ? ` · ${p.scent_family}` : ""}</div>
+          {p.perfumer ? ` · Perfumer: ${p.perfumer}` : ""}</div>
+        {p.scent_families.length > 0 && (
+          <div className="family-tags">
+            {p.scent_families.map((f) => <span key={f} className="family-tag">{f}</span>)}
+          </div>
+        )}
       </div>
 
       <div className="label">Note pyramid</div>

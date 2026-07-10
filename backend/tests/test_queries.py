@@ -3,10 +3,10 @@ from app.schemas import PerfumeCreate, NoteInput
 
 def _seed(session):
     repo.create_perfume(session, PerfumeCreate(
-        name="Sauvage", house="Dior", scent_family="Fresh", formats=["full"],
+        name="Sauvage", house="Dior", scent_families=["Fresh", "Woody"], formats=["full"],
         notes=[NoteInput(name="bergamot", tier="top"), NoteInput(name="ambroxan", tier="base")]))
     repo.create_perfume(session, PerfumeCreate(
-        name="Aventus", house="Creed", scent_family="Chypre", formats=["sample"],
+        name="Aventus", house="Creed", scent_families=["Chypre", "Woody"], formats=["sample"],
         notes=[NoteInput(name="bergamot", tier="top"), NoteInput(name="birch", tier="heart")]))
 
 def test_search_matches_name_or_note(session):
@@ -20,6 +20,9 @@ def test_filter_by_family_and_format(session):
     _seed(session)
     fam = queries.search_perfumes(session, family="Chypre")
     assert [p.name for p in fam] == ["Aventus"]
+    # "Woody" is a secondary tag on BOTH -> any-match returns both.
+    both = queries.search_perfumes(session, family="Woody")
+    assert {p.name for p in both} == {"Sauvage", "Aventus"}
     fmt = queries.search_perfumes(session, fmt="full")
     assert [p.name for p in fmt] == ["Sauvage"]
 
@@ -32,6 +35,8 @@ def test_note_frequency(session):
 def test_family_breakdown(session):
     _seed(session)
     fams = dict(queries.family_breakdown(session))
+    # Multi-tag rows contribute to each family: Woody appears on both.
+    assert fams["Woody"] == 2
     assert fams["Fresh"] == 1 and fams["Chypre"] == 1
 
 def test_similarity_shared_notes(session):

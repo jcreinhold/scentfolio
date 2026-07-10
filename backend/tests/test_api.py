@@ -15,17 +15,18 @@ def client():
     yield TestClient(app)
     app.dependency_overrides.clear()
 
-def _create(client, name="Sauvage", house="Dior", family="Fresh"):
+def _create(client, name="Sauvage", house="Dior", families=("Fresh",)):
     return client.post("/api/perfumes", json={
-        "name": name, "house": house, "scent_family": family, "formats": ["full"],
+        "name": name, "house": house, "scent_families": list(families), "formats": ["full"],
         "notes": [{"name": "bergamot", "tier": "top"}]})
 
 def test_create_and_get_perfume(client):
-    r = _create(client)
+    r = _create(client, families=("Gourmand", "Woody"))
     assert r.status_code == 201
     pid = r.json()["id"]
     got = client.get(f"/api/perfumes/{pid}")
     assert got.json()["notes"][0]["name"] == "bergamot"
+    assert got.json()["scent_families"] == ["Gourmand", "Woody"]
 
 def test_search_by_note(client):
     _create(client)

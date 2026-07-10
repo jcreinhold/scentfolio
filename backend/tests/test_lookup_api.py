@@ -1,6 +1,6 @@
 import pytest
 from fastapi.testclient import TestClient
-from app.main import app, get_session, get_lookup, get_note_describer
+from app.main import app, get_session, get_lookup, get_note_describer, get_family_classifier
 from app.db import Base, make_engine, make_sessionmaker
 from app.agent import Draft
 from app.schemas import PerfumeCreate, NoteInput
@@ -15,14 +15,17 @@ def client():
             yield s
     def _fake_lookup(name: str):
         return Draft(perfume=PerfumeCreate(name="Aventus", house="Creed",
-                     scent_family="Chypre",
+                     scent_families=["Chypre"],
                      notes=[NoteInput(name="bergamot", tier="top")]),
                      confidence="high")
     def _fake_describe(names):
         return {n: f"{n} smells lovely." for n in names}
+    def _fake_classify(name, house, notes):
+        return ["Gourmand", "Green"]
     app.dependency_overrides[get_session] = _sess
     app.dependency_overrides[get_lookup] = lambda: _fake_lookup
     app.dependency_overrides[get_note_describer] = lambda: _fake_describe
+    app.dependency_overrides[get_family_classifier] = lambda: _fake_classify
     yield TestClient(app)
     app.dependency_overrides.clear()
 
@@ -48,6 +51,15 @@ def test_describe_missing_notes_fills_and_returns_count(client):
 
     notes = {n["name"]: n for n in client.get("/api/notes").json()}
     assert notes["bergamot"]["description"] == "bergamot smells lovely."
+
+def test_reclassify_overwrites_families_and_returns_count(client):
+    client.post("/api/perfumes", json={"name": "Milk", "house": "Snif",
+                "scent_families": ["Woody"], "notes": [{"name": "milk", "tier": "base"}]})
+    r = client.post("/api/perfumes/reclassify")
+    assert r.status_code == 200
+    assert r.json()["updated"] == 1
+    p = client.get("/api/perfumes").json()[0]
+    assert p["scent_families"] == ["Gourmand", "Green"]  # from the fake classifier
 
 def test_list_notes_includes_description_field(client):
     client.post("/api/perfumes", json={"name": "X", "house": "Y",

@@ -83,6 +83,12 @@ export async function deletePerfume(id: number): Promise<void> {
   if (!r.ok) throw new Error("Delete failed");
 }
 
+export async function reclassifyPerfumes(): Promise<{ updated: number }> {
+  const r = await fetch("/api/perfumes/reclassify", { method: "POST" });
+  if (!r.ok) throw new Error("Reclassify failed");
+  return r.json();
+}
+
 export const checkDuplicate = (name: string, house: string) =>
   getJSON<{ duplicate: boolean; id: number | null }>(
     `/api/perfumes/check-duplicate?name=${encodeURIComponent(name)}&house=${encodeURIComponent(house)}`);

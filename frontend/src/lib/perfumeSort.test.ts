@@ -5,7 +5,7 @@ import type { Perfume } from "../types";
 function p(over: Partial<Perfume>): Perfume {
   return {
     id: 0, name: "x", house: "h", perfumer: null, year: null,
-    scent_family: null, description: "", my_impressions: "",
+    scent_families: [], description: "", my_impressions: "",
     formats: [], source_urls: [], notes: [], ...over,
   };
 }

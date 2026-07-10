@@ -2,10 +2,20 @@ from app import repository as repo
 from app.schemas import PerfumeCreate, NoteInput
 
 def _sample(name="Sauvage", house="Dior"):
-    return PerfumeCreate(name=name, house=house, scent_family="Fresh",
+    return PerfumeCreate(name=name, house=house, scent_families=["Fresh"],
                          formats=["full"],
                          notes=[NoteInput(name="Bergamot", tier="top", family="Citrus"),
                                 NoteInput(name="ambroxan", tier="base")])
+
+def test_scent_families_round_trip_multi(session):
+    created = repo.create_perfume(session, PerfumeCreate(
+        name="Milk", house="Snif", scent_families=["Gourmand", "Woody"], notes=[]))
+    assert repo.get_perfume(session, created.id).scent_families == ["Gourmand", "Woody"]
+
+def test_set_scent_families_overwrites(session):
+    created = repo.create_perfume(session, _sample())  # ["Fresh"]
+    assert repo.set_scent_families(session, created.id, ["Gourmand", "Green"]) is True
+    assert repo.get_perfume(session, created.id).scent_families == ["Gourmand", "Green"]
 
 def test_create_normalizes_and_dedupes_notes(session):
     repo.create_perfume(session, _sample())

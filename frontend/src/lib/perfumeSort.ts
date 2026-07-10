@@ -13,7 +13,7 @@ const ACCESSORS: Record<SortKey, (p: Perfume) => string | number> = {
   name: (p) => p.name.toLowerCase(),
   house: (p) => p.house.toLowerCase(),
   year: (p) => p.year ?? Number.NaN,
-  family: (p) => (p.scent_family ?? "").toLowerCase(),
+  family: (p) => p.scent_families.join(", ").toLowerCase(),
   notes: (p) => p.notes.length,
 };
 

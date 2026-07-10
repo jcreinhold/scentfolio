@@ -22,15 +22,15 @@ def _to_out(p: Perfume) -> PerfumeOut:
                      family=pn.note.family) for pn in p.perfume_notes]
     return PerfumeOut(
         id=p.id, name=p.name, house=p.house, perfumer=p.perfumer, year=p.year,
-        scent_family=p.scent_family, description=p.description,
-        my_impressions=p.my_impressions,
+        scent_families=[f for f in (p.scent_family or "").split(",") if f],
+        description=p.description, my_impressions=p.my_impressions,
         formats=[f for f in p.formats.split(",") if f],
         source_urls=[u for u in p.source_urls.split("\n") if u],
         notes=notes)
 
 def create_perfume(session: Session, data: PerfumeCreate) -> PerfumeOut:
     p = Perfume(name=data.name, house=data.house, perfumer=data.perfumer,
-                year=data.year, scent_family=data.scent_family,
+                year=data.year, scent_family=",".join(data.scent_families),
                 description=data.description, my_impressions=data.my_impressions,
                 formats=",".join(data.formats), source_urls="\n".join(data.source_urls))
     session.add(p)
@@ -58,9 +58,19 @@ def update_perfume(session: Session, perfume_id: int, data: PerfumeUpdate) -> Pe
         p.my_impressions = data.my_impressions
     if data.formats is not None:
         p.formats = ",".join(data.formats)
+    if data.scent_families is not None:
+        p.scent_family = ",".join(data.scent_families)
     session.commit()
     session.refresh(p)
     return _to_out(p)
+
+def set_scent_families(session: Session, perfume_id: int, families: list[str]) -> bool:
+    p = session.get(Perfume, perfume_id)
+    if not p:
+        return False
+    p.scent_family = ",".join(families)
+    session.commit()
+    return True
 
 def delete_perfume(session: Session, perfume_id: int) -> bool:
     p = session.get(Perfume, perfume_id)

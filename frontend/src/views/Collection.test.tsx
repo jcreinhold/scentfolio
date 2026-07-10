@@ -10,7 +10,7 @@ beforeEach(() => localStorage.clear());
 
 const sauvage = {
   id: 1, name: "Sauvage", house: "Dior", perfumer: null, year: 2015,
-  scent_family: "Fresh", description: "", my_impressions: "",
+  scent_families: ["Fresh"], description: "", my_impressions: "",
   formats: ["full"], source_urls: [], notes: [{ id: 1, name: "bergamot", tier: "top" }],
 };
 

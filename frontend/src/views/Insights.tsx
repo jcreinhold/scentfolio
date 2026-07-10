@@ -1,25 +1,46 @@
 import { useEffect, useState } from "react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
-import { insightNotes, insightFamilies, insightSimilar } from "../api";
+import { insightNotes, insightFamilies, insightSimilar, reclassifyPerfumes } from "../api";
 
 export default function Insights() {
   const [notes, setNotes] = useState<{ note: string; count: number }[]>([]);
   const [families, setFamilies] = useState<{ family: string; count: number }[]>([]);
   const [similar, setSimilar] = useState<{ a: string; b: string; shared: string[]; count: number }[]>([]);
+  const [reclassifying, setReclassifying] = useState(false);
+  const [error, setError] = useState("");
 
+  function loadFamilies() { insightFamilies().then(setFamilies); }
   useEffect(() => {
     insightNotes().then(setNotes);
-    insightFamilies().then(setFamilies);
+    loadFamilies();
     insightSimilar().then(setSimilar);
   }, []);
 
+  async function reclassify() {
+    setError(""); setReclassifying(true);
+    try {
+      await reclassifyPerfumes();
+      loadFamilies();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Reclassify failed");
+    } finally {
+      setReclassifying(false);
+    }
+  }
+
   return (
     <div>
-      <div className="page-head">
-        <div className="eyebrow">Patterns</div>
-        <h2>Insights</h2>
-        <div className="page-sub">What your collection reveals about your taste.</div>
+      <div className="collection-head">
+        <div className="page-head">
+          <div className="eyebrow">Patterns</div>
+          <h2>Insights</h2>
+          <div className="page-sub">What your collection reveals about your taste.</div>
+        </div>
+        <button onClick={reclassify} disabled={reclassifying}>
+          {reclassifying ? "Re-classifying…" : "Re-classify families"}
+        </button>
       </div>
+      {error && <p style={{ color: "crimson" }}>{error}</p>}
 
       <div className="label">Most common notes</div>
       <ResponsiveContainer width="100%" height={240}>

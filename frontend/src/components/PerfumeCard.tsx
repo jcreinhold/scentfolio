@@ -43,6 +43,11 @@ export default function PerfumeCard({ p, onDelete, onSetFormats }: {
       </div>
       <div className="card-sub">{p.house}{p.year ? ` · ${p.year}` : ""}</div>
       {p.perfumer && <div className="card-perfumer">By {p.perfumer}</div>}
+      {p.scent_families.length > 0 && (
+        <div className="family-tags">
+          {p.scent_families.map((f) => <span key={f} className="family-tag">{f}</span>)}
+        </div>
+      )}
 
       <div className="card-pyramid">
         {TIERS.map(({ tier, label }) => {

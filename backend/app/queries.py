@@ -16,7 +16,7 @@ def search_perfumes(session: Session, q: str | None = None, family: str | None =
             (func.lower(Perfume.name).like(f"%{term}%")) |
             (Perfume.id.in_(matching_ids)))
     if family:
-        stmt = stmt.where(Perfume.scent_family == family)
+        stmt = stmt.where(Perfume.scent_family.like(f"%{family}%"))
     if fmt:
         stmt = stmt.where(Perfume.formats.like(f"%{fmt}%"))
     stmt = stmt.order_by(Perfume.name)
@@ -30,10 +30,14 @@ def note_frequency(session: Session) -> list[tuple[str, int]]:
     return [(name, count) for name, count in session.execute(stmt).all()]
 
 def family_breakdown(session: Session) -> list[tuple[str, int]]:
-    stmt = (select(Perfume.scent_family, func.count())
-            .where(Perfume.scent_family.is_not(None))
-            .group_by(Perfume.scent_family))
-    return [(fam, count) for fam, count in session.execute(stmt).all()]
+    """Count each family across perfumes. Families are stored comma-joined, so a
+    perfume with multiple tags contributes to each. Sorted by count desc."""
+    counts: dict[str, int] = {}
+    for (families,) in session.execute(select(Perfume.scent_family)).all():
+        for fam in (families or "").split(","):
+            if fam:
+                counts[fam] = counts.get(fam, 0) + 1
+    return sorted(counts.items(), key=lambda x: x[1], reverse=True)
 
 def format_breakdown(session: Session) -> dict[str, int]:
     result = {"full": 0, "travel": 0, "sample": 0}

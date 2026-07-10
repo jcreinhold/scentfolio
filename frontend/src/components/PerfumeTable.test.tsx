@@ -7,15 +7,15 @@ import type { Perfume } from "../types";
 function p(over: Partial<Perfume>): Perfume {
   return {
     id: 0, name: "x", house: "h", perfumer: null, year: null,
-    scent_family: null, description: "", my_impressions: "",
+    scent_families: [], description: "", my_impressions: "",
     formats: [], source_urls: [], notes: [], ...over,
   };
 }
 
 const list: Perfume[] = [
-  p({ id: 1, name: "Sauvage", house: "Dior", year: 2015, scent_family: "Fresh",
+  p({ id: 1, name: "Sauvage", house: "Dior", year: 2015, scent_families: ["Fresh"],
       formats: ["full", "travel"], notes: [{ id: 1, name: "bergamot" }] }),
-  p({ id: 2, name: "Aventus", house: "Creed", year: 2010, scent_family: "Chypre",
+  p({ id: 2, name: "Aventus", house: "Creed", year: 2010, scent_families: ["Chypre", "Woody"],
       notes: [{ id: 1, name: "a" }, { id: 2, name: "b" }, { id: 3, name: "c" }] }),
 ];
 

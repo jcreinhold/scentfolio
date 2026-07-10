@@ -59,7 +59,7 @@ export default function PerfumeTable({ perfumes }: { perfumes: Perfume[] }) {
               </td>
               <td>{p.house || "—"}</td>
               <td className="num">{p.year ?? "—"}</td>
-              <td>{p.scent_family ?? "—"}</td>
+              <td>{p.scent_families.length ? p.scent_families.join(" · ") : "—"}</td>
               <td>
                 {p.formats.length === 0 ? <span className="pt-muted">—</span>
                   : p.formats.map((f) => <span key={f} className="chip pt-size">{f}</span>)}
