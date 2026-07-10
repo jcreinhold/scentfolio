@@ -3,7 +3,7 @@ from pydantic import BaseModel, Field
 
 Tier = Literal["top", "heart", "base"]
 Format = Literal["full", "travel", "sample"]
-Family = Literal["Citrus", "Floral", "Fruity", "Green", "Woody", "Oriental",
+Family = Literal["Citrus", "Floral", "Fruity", "Green", "Woody",
                  "Fresh", "Aromatic", "Fougere", "Chypre", "Gourmand", "Leather", "Other"]
 
 class NoteInput(BaseModel):

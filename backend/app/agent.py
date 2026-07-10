@@ -7,7 +7,7 @@ from app.schemas import PerfumeCreate
 from dotenv import load_dotenv
 load_dotenv()
 
-VALID_FAMILIES = {"Citrus", "Floral", "Fruity", "Green", "Woody", "Oriental",
+VALID_FAMILIES = {"Citrus", "Floral", "Fruity", "Green", "Woody",
                   "Fresh", "Aromatic", "Fougere", "Chypre", "Gourmand", "Leather", "Other"}
 
 class LookupError(Exception):
