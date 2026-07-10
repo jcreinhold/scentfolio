@@ -5,13 +5,18 @@ from sqlalchemy.orm import Session
 from app.deps import get_session
 from app import repository as repo, queries
 from app.schemas import PerfumeCreate, PerfumeUpdate
-from app.agent import lookup as live_lookup, LookupError
+from app.agent import lookup as live_lookup, describe_notes as live_describe, LookupError
 
 class LookupRequest(BaseModel):
     name: str
 
 def get_lookup():
     return live_lookup
+
+def get_note_describer():
+    return live_describe
+
+DESCRIBE_CHUNK = 25
 
 app = FastAPI(title="Scentfolio")
 app.add_middleware(CORSMiddleware, allow_origins=["http://localhost:5173"],
@@ -67,7 +72,22 @@ def delete_perfume(perfume_id: int, session: Session = Depends(get_session)):
 
 @app.get("/api/notes")
 def list_notes(session: Session = Depends(get_session)):
-    return [{"id": n.id, "name": n.name, "family": n.family} for n in repo.list_notes(session)]
+    return [{"id": n.id, "name": n.name, "family": n.family, "description": n.description}
+            for n in repo.list_notes(session)]
+
+@app.post("/api/notes/describe-missing")
+def describe_missing_notes(session: Session = Depends(get_session),
+                           describe=Depends(get_note_describer)):
+    names = [n.name for n in repo.notes_missing_description(session)]
+    mapping: dict[str, str] = {}
+    for i in range(0, len(names), DESCRIBE_CHUNK):
+        chunk = names[i:i + DESCRIBE_CHUNK]
+        try:
+            mapping.update(describe(chunk))
+        except LookupError:
+            continue  # skip a failed chunk; others still apply
+    updated = repo.apply_note_descriptions(session, mapping)
+    return {"updated": updated}
 
 @app.get("/api/notes/{note_name}")
 def note_detail(note_name: str, session: Session = Depends(get_session)):

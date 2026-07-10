@@ -549,6 +549,20 @@ textarea#imp { min-height: 96px; }
   color: var(--ink-soft);
 }
 
+/* ---------- Glossary note descriptions ---------- */
+.note-desc {
+  margin-top: 10px;
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--ink-soft);
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.note-desc-empty { color: var(--muted); font-style: italic; }
+
 /* ---------- Collection header + view toggle ---------- */
 .collection-head {
   display: flex;

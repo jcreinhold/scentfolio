@@ -91,7 +91,14 @@ export const getNote = (name: string) =>
   getJSON<{ name: string; family: string | null; description: string;
             perfumes: { id: number; name: string; house: string }[] }>(
     `/api/notes/${encodeURIComponent(name)}`);
-export const listNotes = () => getJSON<{ id: number; name: string; family: string | null }[]>(`/api/notes`);
+export const listNotes = () =>
+  getJSON<{ id: number; name: string; family: string | null; description: string }[]>(`/api/notes`);
+
+export async function describeMissingNotes(): Promise<{ updated: number }> {
+  const r = await fetch("/api/notes/describe-missing", { method: "POST" });
+  if (!r.ok) throw new Error("Failed to generate descriptions");
+  return r.json();
+}
 export const insightNotes = () => getJSON<{ note: string; count: number }[]>(`/api/insights/notes`);
 export const insightFamilies = () => getJSON<{ family: string; count: number }[]>(`/api/insights/families`);
 export const insightSimilar = () => getJSON<{ a: string; b: string; shared: string[]; count: number }[]>(`/api/insights/similar`);

@@ -73,6 +73,23 @@ def delete_perfume(session: Session, perfume_id: int) -> bool:
 def list_notes(session: Session) -> list[Note]:
     return list(session.execute(select(Note).order_by(Note.name)).scalars().all())
 
+def notes_missing_description(session: Session) -> list[Note]:
+    stmt = select(Note).where(Note.description == "").order_by(Note.name)
+    return list(session.execute(stmt).scalars().all())
+
+def apply_note_descriptions(session: Session, mapping: dict[str, str]) -> int:
+    """Set descriptions for the named notes (matched case-insensitively).
+    Returns the number of notes actually updated."""
+    updated = 0
+    for name, desc in mapping.items():
+        norm = _normalize(name)
+        note = session.execute(select(Note).where(Note.name == norm)).scalar_one_or_none()
+        if note is not None and desc.strip():
+            note.description = desc.strip()
+            updated += 1
+    session.commit()
+    return updated
+
 def perfumes_with_note(session: Session, note_name: str) -> list[Perfume]:
     norm = _normalize(note_name)
     stmt = (select(Perfume).join(PerfumeNote).join(Note)

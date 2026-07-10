@@ -30,3 +30,18 @@ def test_find_perfumes_by_note(session):
 def test_find_duplicate_is_case_insensitive(session):
     repo.create_perfume(session, PerfumeCreate(name="Aventus", house="Creed", notes=[]))
     assert repo.find_duplicate(session, "aventus", "CREED") is not None
+
+def test_notes_missing_description(session):
+    repo.create_perfume(session, _sample())  # creates bergamot, ambroxan (blank desc)
+    missing = repo.notes_missing_description(session)
+    assert {n.name for n in missing} == {"bergamot", "ambroxan"}
+
+def test_apply_note_descriptions_sets_and_counts(session):
+    repo.create_perfume(session, _sample())
+    # Names matched case-insensitively; unknown names ignored; blanks skipped.
+    updated = repo.apply_note_descriptions(session, {
+        "Bergamot": "Bright citrus.", "ambroxan": "Warm ambery musk.",
+        "unknownnote": "ignored", "": "  "})
+    assert updated == 2
+    remaining = {n.name for n in repo.notes_missing_description(session)}
+    assert remaining == set()  # both now described
