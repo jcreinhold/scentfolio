@@ -9,7 +9,7 @@ interface SortContext {
   perfumerCounts: Map<string, number>;
 }
 
-export function countPerfumers(perfumes: Perfume[]): Map<string, number> {
+function countPerfumers(perfumes: Perfume[]): Map<string, number> {
   const counts = new Map<string, number>();
   for (const p of perfumes) {
     if (!p.perfumer) continue;

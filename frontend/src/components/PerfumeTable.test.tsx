@@ -49,15 +49,14 @@ it("links each name to its detail page", () => {
   expect(screen.getByRole("link", { name: "Aventus" })).toHaveAttribute("href", "/perfume/2");
 });
 
-it("shows perfumers with a collection count and sorts by frequency", () => {
+it("sorts perfumers by collection frequency", () => {
   const withPerfumers: Perfume[] = [
     p({ id: 1, name: "Solo", perfumer: "Lone Nose" }),
     p({ id: 2, name: "Twin A", perfumer: "Alberto Morillas" }),
     p({ id: 3, name: "Twin B", perfumer: "Alberto Morillas" }),
   ];
   render(<MemoryRouter><PerfumeTable perfumes={withPerfumers} /></MemoryRouter>);
-  // Both rows from the twice-owned perfumer show a ×2 count badge; the singleton doesn't.
-  expect(screen.getAllByText("×2")).toHaveLength(2);
+  expect(screen.getByText("Lone Nose")).toBeInTheDocument();
 
   fireEvent.click(screen.getByRole("button", { name: /perfumer/i })); // asc: least-owned first
   expect(rowNames()).toEqual(["Solo", "Twin A", "Twin B"]);
