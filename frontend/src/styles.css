@@ -574,6 +574,42 @@ textarea#imp { min-height: 96px; }
   overflow: hidden;
 }
 .note-desc-empty { color: var(--muted); font-style: italic; }
+.note-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.note-origin {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 2px 8px;
+  border-radius: 20px;
+  border: 1px solid;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.card-sub .note-origin { margin-left: 10px; }
+.origin-natural { color: var(--base); border-color: var(--base); background: var(--base-soft); }
+.origin-synthetic { color: var(--top); border-color: var(--top); background: var(--top-soft); }
+.origin-both { color: var(--heart); border-color: var(--heart); background: var(--heart-soft); }
+.note-production {
+  margin-top: 10px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--muted);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.note-production-label {
+  display: block;
+  font-family: var(--mono);
+  font-size: 8.5px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 2px;
+}
 
 /* ---------- Collection header + view toggle ---------- */
 .collection-head {

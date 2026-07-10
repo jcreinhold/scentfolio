@@ -1,5 +1,5 @@
 from sqlalchemy import text
-from app.db import Base, make_engine, make_sessionmaker
+from app.db import Base, make_engine, make_sessionmaker, ensure_schema
 
 def test_engine_creates_tables_and_session_queries():
     engine = make_engine("sqlite:///:memory:")
@@ -7,3 +7,23 @@ def test_engine_creates_tables_and_session_queries():
     Session = make_sessionmaker(engine)
     with Session() as s:
         assert s.execute(text("SELECT 1")).scalar() == 1
+
+def _note_columns(engine):
+    with engine.connect() as conn:
+        return {row[1] for row in conn.exec_driver_sql("PRAGMA table_info(notes)")}
+
+def test_ensure_schema_adds_missing_columns_idempotently():
+    engine = make_engine("sqlite:///:memory:")
+    # Simulate an OLD db: a notes table without origin/production.
+    with engine.begin() as conn:
+        conn.exec_driver_sql(
+            "CREATE TABLE notes (id INTEGER PRIMARY KEY, name VARCHAR, "
+            "family VARCHAR, description TEXT DEFAULT '')")
+    assert "origin" not in _note_columns(engine)
+
+    ensure_schema(engine)
+    cols = _note_columns(engine)
+    assert "origin" in cols and "production" in cols
+
+    ensure_schema(engine)  # idempotent — must not raise or duplicate
+    assert _note_columns(engine) == cols

@@ -41,17 +41,26 @@ def test_find_duplicate_is_case_insensitive(session):
     repo.create_perfume(session, PerfumeCreate(name="Aventus", house="Creed", notes=[]))
     assert repo.find_duplicate(session, "aventus", "CREED") is not None
 
-def test_notes_missing_description(session):
-    repo.create_perfume(session, _sample())  # creates bergamot, ambroxan (blank desc)
-    missing = repo.notes_missing_description(session)
+def test_notes_missing_enrichment(session):
+    repo.create_perfume(session, _sample())  # creates bergamot, ambroxan (blank origin)
+    missing = repo.notes_missing_enrichment(session)
     assert {n.name for n in missing} == {"bergamot", "ambroxan"}
 
-def test_apply_note_descriptions_sets_and_counts(session):
+def test_apply_note_enrichment_sets_origin_production_and_counts(session):
     repo.create_perfume(session, _sample())
-    # Names matched case-insensitively; unknown names ignored; blanks skipped.
-    updated = repo.apply_note_descriptions(session, {
-        "Bergamot": "Bright citrus.", "ambroxan": "Warm ambery musk.",
-        "unknownnote": "ignored", "": "  "})
+    updated = repo.apply_note_enrichment(session, {
+        "Bergamot": {"description": "Bright citrus.", "origin": "natural", "production": "Cold-pressed."},
+        "ambroxan": {"description": "Ambery.", "origin": "synthetic", "production": "From sclareol."}})
     assert updated == 2
-    remaining = {n.name for n in repo.notes_missing_description(session)}
-    assert remaining == set()  # both now described
+    assert repo.notes_missing_enrichment(session) == []  # both now have an origin
+
+def test_apply_note_enrichment_preserves_existing_description(session):
+    repo.create_perfume(session, _sample())
+    repo.apply_note_enrichment(session, {"bergamot": {
+        "description": "ORIGINAL desc.", "origin": "natural", "production": "p1"}})
+    # Re-enrich with a different description; the existing one must be kept.
+    repo.apply_note_enrichment(session, {"bergamot": {
+        "description": "NEW desc.", "origin": "both", "production": "p2"}})
+    note = {n.name: n for n in repo.list_notes(session)}["bergamot"]
+    assert note.description == "ORIGINAL desc."  # preserved
+    assert note.origin == "both" and note.production == "p2"  # refreshed

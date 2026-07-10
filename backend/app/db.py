@@ -17,3 +17,20 @@ def make_engine(url: str = "sqlite:///scentfolio.db"):
 
 def make_sessionmaker(engine):
     return sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)
+
+# Columns added to existing tables after their initial creation. `create_all`
+# only creates missing tables, never alters existing ones, and there is no
+# migration tool — so this idempotent, additive step heals an older SQLite file.
+_ADDED_COLUMNS = {
+    "notes": [("origin", "VARCHAR(20) DEFAULT ''"), ("production", "TEXT DEFAULT ''")],
+}
+
+def ensure_schema(engine):
+    if engine.dialect.name != "sqlite":
+        return
+    with engine.begin() as conn:
+        for table, columns in _ADDED_COLUMNS.items():
+            existing = {row[1] for row in conn.exec_driver_sql(f"PRAGMA table_info({table})")}
+            for name, ddl in columns:
+                if name not in existing:
+                    conn.exec_driver_sql(f"ALTER TABLE {table} ADD COLUMN {name} {ddl}")

@@ -95,14 +95,16 @@ export const checkDuplicate = (name: string, house: string) =>
 
 export const getNote = (name: string) =>
   getJSON<{ name: string; family: string | null; description: string;
+            origin: string; production: string;
             perfumes: { id: number; name: string; house: string }[] }>(
     `/api/notes/${encodeURIComponent(name)}`);
 export const listNotes = () =>
-  getJSON<{ id: number; name: string; family: string | null; description: string }[]>(`/api/notes`);
+  getJSON<{ id: number; name: string; family: string | null;
+            description: string; origin: string; production: string }[]>(`/api/notes`);
 
-export async function describeMissingNotes(): Promise<{ updated: number }> {
-  const r = await fetch("/api/notes/describe-missing", { method: "POST" });
-  if (!r.ok) throw new Error("Failed to generate descriptions");
+export async function enrichMissingNotes(): Promise<{ updated: number }> {
+  const r = await fetch("/api/notes/enrich-missing", { method: "POST" });
+  if (!r.ok) throw new Error("Failed to enrich notes");
   return r.json();
 }
 export const insightNotes = () => getJSON<{ note: string; count: number }[]>(`/api/insights/notes`);

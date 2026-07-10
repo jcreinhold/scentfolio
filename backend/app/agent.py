@@ -91,16 +91,22 @@ def lookup(name: str, client=None) -> Draft:
     text = "".join(b.text for b in resp.content if getattr(b, "type", None) == "text")
     return extract_draft(text)
 
-NOTE_DESC_PROMPT = (
+VALID_ORIGINS = {"natural", "synthetic", "both"}
+
+NOTE_ENRICH_PROMPT = (
     "You are a fragrance expert. For each perfume note name given (a JSON array), "
-    "write a concise 1-2 sentence description of what it smells like — its "
-    "olfactory character and common associations. Return ONLY a JSON object (no "
-    "prose) mapping each note name, EXACTLY as given, to its description string."
+    "return an object with keys: 'description' (1-2 sentences on what it smells "
+    "like — its olfactory character and associations), 'origin' (one of "
+    "'natural', 'synthetic', or 'both' — how the note is USUALLY sourced in modern "
+    "perfumery), and 'production' (1-2 interesting sentences on how a natural note "
+    "is harvested/extracted, or how a synthetic material or accord is constructed). "
+    "Return ONLY a JSON object (no prose) mapping each note name, EXACTLY as given, "
+    "to its object."
 )
 
-def describe_notes(names: list[str], client=None) -> dict[str, str]:
-    """Generate short scent descriptions for note names. Batched: one call for
-    the whole `names` list. `client` injectable for tests. No web search needed."""
+def enrich_notes(names: list[str], client=None) -> dict[str, dict]:
+    """Generate {description, origin, production} for note names. Batched: one
+    call for the whole `names` list. `client` injectable for tests. No web search."""
     if not names:
         return {}
     if client is None:
@@ -110,8 +116,8 @@ def describe_notes(names: list[str], client=None) -> dict[str, str]:
         client = Anthropic()
     resp = client.messages.create(
         model="claude-haiku-4-5-20251001",
-        max_tokens=2000,
-        system=NOTE_DESC_PROMPT,
+        max_tokens=4000,
+        system=NOTE_ENRICH_PROMPT,
         messages=[{"role": "user", "content": json.dumps(names)}],
     )
     text = "".join(b.text for b in resp.content if getattr(b, "type", None) == "text")
@@ -119,9 +125,20 @@ def describe_notes(names: list[str], client=None) -> dict[str, str]:
         payload = json.loads(_isolate_json(text))
     except json.JSONDecodeError as e:
         raise LookupError(f"Model did not return JSON: {text[:200]}") from e
-    # Keep only requested names with non-empty string descriptions.
-    return {n: payload[n] for n in names
-            if isinstance(payload.get(n), str) and payload[n].strip()}
+    out: dict[str, dict] = {}
+    for n in names:
+        entry = payload.get(n)
+        if not isinstance(entry, dict):
+            continue
+        origin = entry.get("origin")
+        out[n] = {
+            "description": entry["description"].strip()
+                if isinstance(entry.get("description"), str) else "",
+            "origin": origin if origin in VALID_ORIGINS else "",
+            "production": entry["production"].strip()
+                if isinstance(entry.get("production"), str) else "",
+        }
+    return out
 
 CLASSIFY_PROMPT = (
     "You are a fragrance classification expert. Given a perfume (name, house, and "

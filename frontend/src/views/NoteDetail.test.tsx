@@ -7,6 +7,7 @@ import * as api from "../api";
 it("shows note info and perfumes containing it", async () => {
   vi.spyOn(api, "getNote").mockResolvedValue({
     name: "bergamot", family: "Citrus", description: "Bright citrus.",
+    origin: "natural", production: "Cold-pressed from the peel.",
     perfumes: [{ id: 1, name: "Sauvage", house: "Dior" }],
   });
   render(<MemoryRouter initialEntries={["/note/bergamot"]}>
@@ -14,5 +15,7 @@ it("shows note info and perfumes containing it", async () => {
   </MemoryRouter>);
   await waitFor(() => expect(screen.getByText("bergamot")).toBeInTheDocument());
   expect(screen.getByText("Bright citrus.")).toBeInTheDocument();
+  expect(screen.getByText("natural")).toBeInTheDocument();
+  expect(screen.getByText("Cold-pressed from the peel.")).toBeInTheDocument();
   expect(screen.getByText(/Sauvage/)).toBeInTheDocument();
 });

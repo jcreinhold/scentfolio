@@ -1,6 +1,6 @@
 import json
 import pytest
-from app.agent import extract_draft, describe_notes, classify_families, LookupError
+from app.agent import extract_draft, enrich_notes, classify_families, LookupError
 
 
 class _Block:
@@ -73,33 +73,39 @@ def test_extract_draft_handles_preamble_without_fence():
     assert draft.perfume.house == "Dior"
 
 
-def test_describe_notes_returns_map_for_requested_names():
+def test_enrich_notes_returns_full_object_for_requested_names():
     client = _FakeClient(json.dumps({
-        "bergamot": "Bright, zesty citrus with a soft floral edge.",
-        "musk": "Warm, skin-like and soft.",
-        "extra": "not requested"}))
-    out = describe_notes(["bergamot", "musk"], client=client)
-    assert out == {"bergamot": "Bright, zesty citrus with a soft floral edge.",
-                   "musk": "Warm, skin-like and soft."}
-    assert "extra" not in out  # only requested names kept
+        "bergamot": {"description": "Bright citrus.", "origin": "natural",
+                     "production": "Cold-pressed from the peel."},
+        "ambroxan": {"description": "Warm ambery musk.", "origin": "synthetic",
+                     "production": "Derived from sclareol in clary sage."},
+        "extra": {"description": "x", "origin": "natural", "production": "y"}}))
+    out = enrich_notes(["bergamot", "ambroxan"], client=client)
+    assert set(out) == {"bergamot", "ambroxan"}  # only requested names kept
+    assert out["bergamot"] == {"description": "Bright citrus.", "origin": "natural",
+                               "production": "Cold-pressed from the peel."}
+    assert out["ambroxan"]["origin"] == "synthetic"
 
-def test_describe_notes_empty_input_makes_no_call():
+def test_enrich_notes_empty_input_makes_no_call():
     client = _FakeClient("{}")
-    assert describe_notes([], client=client) == {}
+    assert enrich_notes([], client=client) == {}
     assert client.calls == []
 
-def test_describe_notes_skips_missing_or_blank_entries():
-    client = _FakeClient(json.dumps({"bergamot": "Citrusy.", "musk": "   "}))
-    out = describe_notes(["bergamot", "musk", "oud"], client=client)
-    assert out == {"bergamot": "Citrusy."}  # blank musk and absent oud dropped
+def test_enrich_notes_coerces_invalid_origin_to_blank():
+    client = _FakeClient(json.dumps({"rose": {"description": "Floral.",
+                         "origin": "alien", "production": "steam-distilled"}}))
+    out = enrich_notes(["rose"], client=client)
+    assert out["rose"]["origin"] == ""  # invalid origin dropped
+    assert out["rose"]["production"] == "steam-distilled"
 
-def test_describe_notes_handles_code_fence():
-    client = _FakeClient("```json\n" + json.dumps({"rose": "Lush, dewy floral."}) + "\n```")
-    assert describe_notes(["rose"], client=client) == {"rose": "Lush, dewy floral."}
+def test_enrich_notes_handles_code_fence():
+    client = _FakeClient("```json\n" + json.dumps({
+        "rose": {"description": "Lush.", "origin": "natural", "production": "distilled"}}) + "\n```")
+    assert enrich_notes(["rose"], client=client)["rose"]["origin"] == "natural"
 
-def test_describe_notes_rejects_non_json():
+def test_enrich_notes_rejects_non_json():
     with pytest.raises(LookupError):
-        describe_notes(["rose"], client=_FakeClient("I cannot help with that."))
+        enrich_notes(["rose"], client=_FakeClient("I cannot help with that."))
 
 
 def test_classify_families_returns_valid_tags():

@@ -12,9 +12,18 @@ export default function NoteDetail() {
   return (
     <div>
       <h2>{data.name}</h2>
-      <div className="card-sub">{data.family ?? "Unclassified"}</div>
+      <div className="card-sub">
+        {data.family ?? "Unclassified"}
+        {data.origin && <span className={`note-origin origin-${data.origin}`}>{data.origin}</span>}
+      </div>
       <div className="label">What it smells like</div>
       <p>{data.description || "No description yet."}</p>
+      {data.production && (
+        <>
+          <div className="label">How it's made</div>
+          <p>{data.production}</p>
+        </>
+      )}
       <div className="label">In your collection ({data.perfumes.length})</div>
       <div className="grid">
         {data.perfumes.map((p) => (

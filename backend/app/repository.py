@@ -83,20 +83,26 @@ def delete_perfume(session: Session, perfume_id: int) -> bool:
 def list_notes(session: Session) -> list[Note]:
     return list(session.execute(select(Note).order_by(Note.name)).scalars().all())
 
-def notes_missing_description(session: Session) -> list[Note]:
-    stmt = select(Note).where(Note.description == "").order_by(Note.name)
+def notes_missing_enrichment(session: Session) -> list[Note]:
+    """Notes not yet enriched — i.e. without an origin classification."""
+    stmt = select(Note).where(Note.origin == "").order_by(Note.name)
     return list(session.execute(stmt).scalars().all())
 
-def apply_note_descriptions(session: Session, mapping: dict[str, str]) -> int:
-    """Set descriptions for the named notes (matched case-insensitively).
-    Returns the number of notes actually updated."""
+def apply_note_enrichment(session: Session, mapping: dict[str, dict]) -> int:
+    """Set origin/production for the named notes (matched case-insensitively).
+    Existing descriptions are preserved — description is only set when currently
+    blank. Returns the number of notes actually updated."""
     updated = 0
-    for name, desc in mapping.items():
+    for name, data in mapping.items():
         norm = _normalize(name)
         note = session.execute(select(Note).where(Note.name == norm)).scalar_one_or_none()
-        if note is not None and desc.strip():
-            note.description = desc.strip()
-            updated += 1
+        if note is None:
+            continue
+        note.origin = data.get("origin", "")
+        note.production = data.get("production", "")
+        if not note.description and data.get("description"):
+            note.description = data["description"]
+        updated += 1
     session.commit()
     return updated
 

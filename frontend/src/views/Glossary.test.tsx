@@ -6,35 +6,41 @@ import * as api from "../api";
 
 beforeEach(() => vi.restoreAllMocks());
 
-const withDesc = { id: 1, name: "bergamot", family: "Citrus", description: "Bright, zesty citrus." };
-const blank = { id: 2, name: "oud", family: "Woody", description: "" };
+const enriched = {
+  id: 1, name: "bergamot", family: "Citrus", description: "Bright, zesty citrus.",
+  origin: "natural", production: "Cold-pressed from the fruit peel in Calabria.",
+};
+const blank = { id: 2, name: "ambroxan", family: "Woody", description: "", origin: "", production: "" };
 
-it("renders a note's description", async () => {
-  vi.spyOn(api, "listNotes").mockResolvedValue([withDesc, blank]);
+it("renders a note's description, origin chip, and production fact", async () => {
+  vi.spyOn(api, "listNotes").mockResolvedValue([enriched, blank]);
   render(<MemoryRouter><Glossary /></MemoryRouter>);
   await waitFor(() => expect(screen.getByText("bergamot")).toBeInTheDocument());
   expect(screen.getByText("Bright, zesty citrus.")).toBeInTheDocument();
+  expect(screen.getByText("natural")).toBeInTheDocument();
+  expect(screen.getByText(/cold-pressed from the fruit peel/i)).toBeInTheDocument();
 });
 
-it("shows a generate button counting the notes missing descriptions", async () => {
-  vi.spyOn(api, "listNotes").mockResolvedValue([withDesc, blank]);
+it("shows an enrich button counting notes missing an origin", async () => {
+  vi.spyOn(api, "listNotes").mockResolvedValue([enriched, blank]);
   render(<MemoryRouter><Glossary /></MemoryRouter>);
-  await waitFor(() => expect(screen.getByText(/generate descriptions \(1\)/i)).toBeInTheDocument());
+  await waitFor(() => expect(screen.getByText(/enrich notes \(1\)/i)).toBeInTheDocument());
 });
 
-it("generates descriptions and re-fetches the list", async () => {
+it("enriches notes and re-fetches the list", async () => {
   const list = vi.spyOn(api, "listNotes")
-    .mockResolvedValueOnce([withDesc, blank])                                  // initial load
-    .mockResolvedValueOnce([withDesc, { ...blank, description: "Smoky resin." }]); // after generate
-  const gen = vi.spyOn(api, "describeMissingNotes").mockResolvedValue({ updated: 1 });
+    .mockResolvedValueOnce([enriched, blank])                                             // initial
+    .mockResolvedValueOnce([enriched, { ...blank, origin: "synthetic",
+                                        production: "Made from sclareol." }]);            // after enrich
+  const gen = vi.spyOn(api, "enrichMissingNotes").mockResolvedValue({ updated: 1 });
 
   render(<MemoryRouter><Glossary /></MemoryRouter>);
-  await waitFor(() => expect(screen.getByText(/generate descriptions \(1\)/i)).toBeInTheDocument());
+  await waitFor(() => expect(screen.getByText(/enrich notes \(1\)/i)).toBeInTheDocument());
 
-  fireEvent.click(screen.getByText(/generate descriptions/i));
+  fireEvent.click(screen.getByText(/enrich notes/i));
   await waitFor(() => expect(gen).toHaveBeenCalledTimes(1));
-  await waitFor(() => expect(screen.getByText("Smoky resin.")).toBeInTheDocument());
+  await waitFor(() => expect(screen.getByText("Made from sclareol.")).toBeInTheDocument());
   expect(list).toHaveBeenCalledTimes(2);
   // Nothing missing now → button gone.
-  expect(screen.queryByText(/generate descriptions/i)).not.toBeInTheDocument();
+  expect(screen.queryByText(/enrich notes/i)).not.toBeInTheDocument();
 });

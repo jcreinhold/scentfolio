@@ -28,6 +28,8 @@ class Note(Base):
     name: Mapped[str] = mapped_column(String(120), unique=True)
     family: Mapped[str | None] = mapped_column(String(50), nullable=True)
     description: Mapped[str] = mapped_column(Text, default="")
+    origin: Mapped[str] = mapped_column(String(20), default="")       # natural/synthetic/both/""
+    production: Mapped[str] = mapped_column(Text, default="")         # how it's harvested or made
     perfume_notes: Mapped[list["PerfumeNote"]] = relationship(back_populates="note")
 
 class PerfumeNote(Base):
