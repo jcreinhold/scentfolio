@@ -8,9 +8,9 @@ interface Column { key: SortKey; label: string; numeric?: boolean; }
 const COLUMNS: Column[] = [
   { key: "name", label: "Name" },
   { key: "house", label: "House" },
-  { key: "perfumer", label: "Perfumer" },
   { key: "year", label: "Year", numeric: true },
   { key: "family", label: "Family" },
+  { key: "perfumer", label: "Perfumer" },
 ];
 
 export default function PerfumeTable({ perfumes }: { perfumes: Perfume[] }) {
@@ -59,9 +59,9 @@ export default function PerfumeTable({ perfumes }: { perfumes: Perfume[] }) {
                 <Link to={`/perfume/${p.id}`} onClick={(e) => e.stopPropagation()}>{p.name}</Link>
               </td>
               <td>{p.house || "—"}</td>
-              <td>{p.perfumer || <span className="pt-muted">—</span>}</td>
               <td className="num">{p.year ?? "—"}</td>
               <td>{p.scent_families.length ? p.scent_families.join(" · ") : "—"}</td>
+              <td>{p.perfumer || <span className="pt-muted">—</span>}</td>
               <td>
                 {p.formats.length === 0 ? <span className="pt-muted">—</span>
                   : p.formats.map((f) => <span key={f} className="chip pt-size">{f}</span>)}
