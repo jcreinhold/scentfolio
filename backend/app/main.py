@@ -99,7 +99,8 @@ def delete_perfume(perfume_id: int, session: Session = Depends(get_session)):
 @app.get("/api/notes")
 def list_notes(session: Session = Depends(get_session)):
     return [{"id": n.id, "name": n.name, "family": n.family, "description": n.description,
-             "origin": n.origin, "production": n.production}
+             "origin": n.origin, "production": n.production, "compounds": n.compounds,
+             "sourcing": n.sourcing, "proprietary_to": n.proprietary_to}
             for n in repo.list_notes(session)]
 
 @app.post("/api/notes/enrich-missing")
@@ -127,6 +128,9 @@ def note_detail(note_name: str, session: Session = Depends(get_session)):
         "description": n.description if n else "",
         "origin": n.origin if n else "",
         "production": n.production if n else "",
+        "compounds": n.compounds if n else "",
+        "sourcing": n.sourcing if n else "",
+        "proprietary_to": n.proprietary_to if n else "",
         "perfumes": [{"id": p.id, "name": p.name, "house": p.house} for p in perfumes],
     }
 

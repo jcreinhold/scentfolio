@@ -24,6 +24,24 @@ export default function NoteDetail() {
           <p>{data.production}</p>
         </>
       )}
+      {data.compounds && (
+        <>
+          <div className="label">Key compounds</div>
+          <p>{data.compounds}</p>
+        </>
+      )}
+      {data.sourcing && (
+        <>
+          <div className="label">Sourcing</div>
+          <p>{data.sourcing}</p>
+        </>
+      )}
+      {data.proprietary_to && (
+        <>
+          <div className="label">Proprietary to</div>
+          <p>{data.proprietary_to}</p>
+        </>
+      )}
       <div className="label">In your collection ({data.perfumes.length})</div>
       <div className="grid">
         {data.perfumes.map((p) => (

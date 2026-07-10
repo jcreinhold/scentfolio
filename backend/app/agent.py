@@ -93,20 +93,40 @@ def lookup(name: str, client=None) -> Draft:
 
 VALID_ORIGINS = {"natural", "synthetic", "both"}
 
+# Bump when enrich_notes' output shape grows so existing notes get re-enriched.
+# v1: description, origin, production.  v2: + compounds, sourcing, proprietary_to.
+ENRICH_VERSION = 2
+
 NOTE_ENRICH_PROMPT = (
     "You are a fragrance expert. For each perfume note name given (a JSON array), "
-    "return an object with keys: 'description' (1-2 sentences on what it smells "
-    "like — its olfactory character and associations), 'origin' (one of "
-    "'natural', 'synthetic', or 'both' — how the note is USUALLY sourced in modern "
-    "perfumery), and 'production' (1-2 interesting sentences on how a natural note "
-    "is harvested/extracted, or how a synthetic material or accord is constructed). "
+    "return an object with keys: "
+    "'description' (1-2 sentences on what it smells like — its olfactory character "
+    "and associations); "
+    "'origin' (one of 'natural', 'synthetic', or 'both' — how the note is USUALLY "
+    "sourced in modern perfumery); "
+    "'production' (1-2 interesting sentences on how a natural note is harvested/"
+    "extracted, or how a synthetic material or accord is constructed); "
+    "'compounds' (for synthetic or accord notes, the key chemical compounds or "
+    "aroma materials typically used, e.g. 'galaxolide, ISO E Super'; empty string "
+    "for pure naturals); "
+    "'sourcing' (for natural notes, where it is typically grown/sourced and the "
+    "main producing regions, e.g. 'Grasse, France; Bulgaria; Turkey'; empty string "
+    "for pure synthetics); "
+    "'proprietary_to' (if the material is a known captive/proprietary molecule, the "
+    "fragrance house or supplier it belongs to, e.g. Akigalawood -> 'Givaudan'; "
+    "empty string otherwise). "
     "Return ONLY a JSON object (no prose) mapping each note name, EXACTLY as given, "
     "to its object."
 )
 
+def _clean_str(entry: dict, key: str) -> str:
+    val = entry.get(key)
+    return val.strip() if isinstance(val, str) else ""
+
 def enrich_notes(names: list[str], client=None) -> dict[str, dict]:
-    """Generate {description, origin, production} for note names. Batched: one
-    call for the whole `names` list. `client` injectable for tests. No web search."""
+    """Generate {description, origin, production, compounds, sourcing,
+    proprietary_to} for note names. Batched: one call for the whole `names` list.
+    `client` injectable for tests. No web search."""
     if not names:
         return {}
     if client is None:
@@ -116,7 +136,7 @@ def enrich_notes(names: list[str], client=None) -> dict[str, dict]:
         client = Anthropic()
     resp = client.messages.create(
         model="claude-haiku-4-5-20251001",
-        max_tokens=4000,
+        max_tokens=6000,
         system=NOTE_ENRICH_PROMPT,
         messages=[{"role": "user", "content": json.dumps(names)}],
     )
@@ -132,11 +152,12 @@ def enrich_notes(names: list[str], client=None) -> dict[str, dict]:
             continue
         origin = entry.get("origin")
         out[n] = {
-            "description": entry["description"].strip()
-                if isinstance(entry.get("description"), str) else "",
+            "description": _clean_str(entry, "description"),
             "origin": origin if origin in VALID_ORIGINS else "",
-            "production": entry["production"].strip()
-                if isinstance(entry.get("production"), str) else "",
+            "production": _clean_str(entry, "production"),
+            "compounds": _clean_str(entry, "compounds"),
+            "sourcing": _clean_str(entry, "sourcing"),
+            "proprietary_to": _clean_str(entry, "proprietary_to"),
         }
     return out
 

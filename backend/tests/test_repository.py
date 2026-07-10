@@ -41,18 +41,25 @@ def test_find_duplicate_is_case_insensitive(session):
     repo.create_perfume(session, PerfumeCreate(name="Aventus", house="Creed", notes=[]))
     assert repo.find_duplicate(session, "aventus", "CREED") is not None
 
-def test_notes_missing_enrichment(session):
-    repo.create_perfume(session, _sample())  # creates bergamot, ambroxan (blank origin)
-    missing = repo.notes_missing_enrichment(session)
-    assert {n.name for n in missing} == {"bergamot", "ambroxan"}
+def test_notes_missing_enrichment_by_version(session):
+    repo.create_perfume(session, _sample())  # bergamot, ambroxan at version 0 (stale)
+    assert {n.name for n in repo.notes_missing_enrichment(session)} == {"bergamot", "ambroxan"}
+    # Enriching stamps the current version, so they drop out of "missing".
+    repo.apply_note_enrichment(session, {
+        "bergamot": {"origin": "natural"}, "ambroxan": {"origin": "synthetic"}})
+    assert repo.notes_missing_enrichment(session) == []
 
-def test_apply_note_enrichment_sets_origin_production_and_counts(session):
+def test_apply_note_enrichment_sets_new_fields_and_counts(session):
     repo.create_perfume(session, _sample())
     updated = repo.apply_note_enrichment(session, {
-        "Bergamot": {"description": "Bright citrus.", "origin": "natural", "production": "Cold-pressed."},
-        "ambroxan": {"description": "Ambery.", "origin": "synthetic", "production": "From sclareol."}})
+        "Bergamot": {"description": "Bright citrus.", "origin": "natural",
+                     "production": "Cold-pressed.", "sourcing": "Calabria", "compounds": ""},
+        "ambroxan": {"description": "Ambery.", "origin": "synthetic", "production": "From sclareol.",
+                     "compounds": "ambrox", "proprietary_to": ""}})
     assert updated == 2
-    assert repo.notes_missing_enrichment(session) == []  # both now have an origin
+    notes = {n.name: n for n in repo.list_notes(session)}
+    assert notes["bergamot"].sourcing == "Calabria"
+    assert notes["ambroxan"].compounds == "ambrox"
 
 def test_apply_note_enrichment_preserves_existing_description(session):
     repo.create_perfume(session, _sample())
@@ -60,7 +67,8 @@ def test_apply_note_enrichment_preserves_existing_description(session):
         "description": "ORIGINAL desc.", "origin": "natural", "production": "p1"}})
     # Re-enrich with a different description; the existing one must be kept.
     repo.apply_note_enrichment(session, {"bergamot": {
-        "description": "NEW desc.", "origin": "both", "production": "p2"}})
+        "description": "NEW desc.", "origin": "both", "production": "p2",
+        "proprietary_to": "Givaudan"}})
     note = {n.name: n for n in repo.list_notes(session)}["bergamot"]
     assert note.description == "ORIGINAL desc."  # preserved
-    assert note.origin == "both" and note.production == "p2"  # refreshed
+    assert note.origin == "both" and note.proprietary_to == "Givaudan"  # refreshed

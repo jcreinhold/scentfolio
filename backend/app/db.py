@@ -22,7 +22,14 @@ def make_sessionmaker(engine):
 # only creates missing tables, never alters existing ones, and there is no
 # migration tool — so this idempotent, additive step heals an older SQLite file.
 _ADDED_COLUMNS = {
-    "notes": [("origin", "VARCHAR(20) DEFAULT ''"), ("production", "TEXT DEFAULT ''")],
+    "notes": [
+        ("origin", "VARCHAR(20) DEFAULT ''"),
+        ("production", "TEXT DEFAULT ''"),
+        ("compounds", "TEXT DEFAULT ''"),
+        ("sourcing", "TEXT DEFAULT ''"),
+        ("proprietary_to", "VARCHAR(80) DEFAULT ''"),
+        ("detail_version", "INTEGER DEFAULT 0"),
+    ],
 }
 
 def ensure_schema(engine):

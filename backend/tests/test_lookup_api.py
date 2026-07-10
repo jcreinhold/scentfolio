@@ -20,7 +20,8 @@ def client():
                      confidence="high")
     def _fake_enrich(names):
         return {n: {"description": f"{n} smells lovely.", "origin": "natural",
-                    "production": f"{n} is harvested carefully."} for n in names}
+                    "production": f"{n} is harvested carefully.",
+                    "compounds": "", "sourcing": "Grasse", "proprietary_to": ""} for n in names}
     def _fake_classify(name, house, notes):
         return ["Gourmand", "Green"]
     app.dependency_overrides[get_session] = _sess
@@ -54,6 +55,7 @@ def test_enrich_missing_notes_fills_and_returns_count(client):
     assert notes["bergamot"]["description"] == "bergamot smells lovely."
     assert notes["bergamot"]["origin"] == "natural"
     assert notes["bergamot"]["production"] == "bergamot is harvested carefully."
+    assert notes["bergamot"]["sourcing"] == "Grasse"
 
 def test_reclassify_overwrites_families_and_returns_count(client):
     client.post("/api/perfumes", json={"name": "Milk", "house": "Snif",
@@ -68,4 +70,5 @@ def test_list_notes_includes_enrichment_fields(client):
     client.post("/api/perfumes", json={"name": "X", "house": "Y",
                 "notes": [{"name": "rose", "tier": "heart"}]})
     notes = client.get("/api/notes").json()
-    assert all({"description", "origin", "production"} <= n.keys() for n in notes)
+    assert all({"description", "origin", "production", "compounds", "sourcing",
+                "proprietary_to"} <= n.keys() for n in notes)

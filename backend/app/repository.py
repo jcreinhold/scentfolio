@@ -2,6 +2,7 @@ from sqlalchemy import select, func
 from sqlalchemy.orm import Session
 from app.models import Perfume, Note, PerfumeNote
 from app.schemas import PerfumeCreate, PerfumeOut, NoteOut, PerfumeUpdate
+from app.agent import ENRICH_VERSION
 
 def _normalize(name: str) -> str:
     return name.strip().lower()
@@ -84,14 +85,14 @@ def list_notes(session: Session) -> list[Note]:
     return list(session.execute(select(Note).order_by(Note.name)).scalars().all())
 
 def notes_missing_enrichment(session: Session) -> list[Note]:
-    """Notes not yet enriched — i.e. without an origin classification."""
-    stmt = select(Note).where(Note.origin == "").order_by(Note.name)
+    """Notes whose enrichment predates the current schema version (stale)."""
+    stmt = select(Note).where(Note.detail_version < ENRICH_VERSION).order_by(Note.name)
     return list(session.execute(stmt).scalars().all())
 
 def apply_note_enrichment(session: Session, mapping: dict[str, dict]) -> int:
-    """Set origin/production for the named notes (matched case-insensitively).
-    Existing descriptions are preserved — description is only set when currently
-    blank. Returns the number of notes actually updated."""
+    """Set enrichment fields for the named notes (matched case-insensitively) and
+    stamp the current version. Existing descriptions are preserved — description
+    is only set when currently blank. Returns the number of notes updated."""
     updated = 0
     for name, data in mapping.items():
         norm = _normalize(name)
@@ -100,8 +101,12 @@ def apply_note_enrichment(session: Session, mapping: dict[str, dict]) -> int:
             continue
         note.origin = data.get("origin", "")
         note.production = data.get("production", "")
+        note.compounds = data.get("compounds", "")
+        note.sourcing = data.get("sourcing", "")
+        note.proprietary_to = data.get("proprietary_to", "")
         if not note.description and data.get("description"):
             note.description = data["description"]
+        note.detail_version = ENRICH_VERSION
         updated += 1
     session.commit()
     return updated

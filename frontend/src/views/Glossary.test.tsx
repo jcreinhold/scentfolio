@@ -9,16 +9,25 @@ beforeEach(() => vi.restoreAllMocks());
 const enriched = {
   id: 1, name: "bergamot", family: "Citrus", description: "Bright, zesty citrus.",
   origin: "natural", production: "Cold-pressed from the fruit peel in Calabria.",
+  compounds: "", sourcing: "Calabria, Italy", proprietary_to: "",
 };
-const blank = { id: 2, name: "ambroxan", family: "Woody", description: "", origin: "", production: "" };
+const captive = {
+  id: 3, name: "akigalawood", family: "Woody", description: "Woody peppery.",
+  origin: "synthetic", production: "Biotech fractionation of patchouli.",
+  compounds: "patchouli fraction", sourcing: "", proprietary_to: "Givaudan",
+};
+const blank = { id: 2, name: "ambroxan", family: "Woody", description: "", origin: "",
+  production: "", compounds: "", sourcing: "", proprietary_to: "" };
 
-it("renders a note's description, origin chip, and production fact", async () => {
-  vi.spyOn(api, "listNotes").mockResolvedValue([enriched, blank]);
+it("renders description, origin chip, sourcing, and a proprietary badge", async () => {
+  vi.spyOn(api, "listNotes").mockResolvedValue([enriched, captive, blank]);
   render(<MemoryRouter><Glossary /></MemoryRouter>);
   await waitFor(() => expect(screen.getByText("bergamot")).toBeInTheDocument());
   expect(screen.getByText("Bright, zesty citrus.")).toBeInTheDocument();
   expect(screen.getByText("natural")).toBeInTheDocument();
-  expect(screen.getByText(/cold-pressed from the fruit peel/i)).toBeInTheDocument();
+  expect(screen.getByText(/calabria, italy/i)).toBeInTheDocument();          // sourcing line
+  expect(screen.getByText("Givaudan")).toBeInTheDocument();                  // proprietary badge
+  expect(screen.getByText(/patchouli fraction/i)).toBeInTheDocument();       // compounds line
 });
 
 it("shows an enrich button counting notes missing an origin", async () => {
