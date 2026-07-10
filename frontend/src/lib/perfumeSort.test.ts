@@ -34,6 +34,26 @@ describe("sortPerfumes", () => {
     expect(names(sortPerfumes(list, "year", "desc"))).toEqual(["y2015", "y2000", "undated"]);
   });
 
+  it("sorts by perfumer collection frequency, grouping same perfumer together", () => {
+    const list = [
+      p({ name: "a1", perfumer: "Alberto Morillas" }),
+      p({ name: "solo", perfumer: "Solo Nose" }),
+      p({ name: "a2", perfumer: "Alberto Morillas" }),
+      p({ name: "none", perfumer: null }),
+    ];
+    // desc: the perfumer with the most perfumes (Morillas ×2) leads; the two
+    // Morillas rows stay adjacent; the perfumer-less one sinks last.
+    const out = names(sortPerfumes(list, "perfumer", "desc"));
+    expect(out.slice(0, 2).sort()).toEqual(["a1", "a2"]);
+    expect(out[2]).toBe("solo");
+    expect(out[3]).toBe("none"); // missing perfumer always last
+  });
+
+  it("keeps perfumes with no perfumer last even ascending", () => {
+    const list = [p({ name: "none", perfumer: null }), p({ name: "has", perfumer: "X" })];
+    expect(names(sortPerfumes(list, "perfumer", "asc"))).toEqual(["has", "none"]);
+  });
+
   it("does not mutate the input array", () => {
     const list = [p({ name: "b" }), p({ name: "a" })];
     const before = names(list);

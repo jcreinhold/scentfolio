@@ -1,13 +1,14 @@
 import { useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import type { Perfume } from "../types";
-import { sortPerfumes, type SortKey, type SortDir } from "../lib/perfumeSort";
+import { sortPerfumes, countPerfumers, type SortKey, type SortDir } from "../lib/perfumeSort";
 
 interface Column { key: SortKey; label: string; numeric?: boolean; }
 
 const COLUMNS: Column[] = [
   { key: "name", label: "Name" },
   { key: "house", label: "House" },
+  { key: "perfumer", label: "Perfumer" },
   { key: "year", label: "Year", numeric: true },
   { key: "family", label: "Family" },
 ];
@@ -18,6 +19,7 @@ export default function PerfumeTable({ perfumes }: { perfumes: Perfume[] }) {
   const [sortDir, setSortDir] = useState<SortDir>("asc");
 
   const rows = useMemo(() => sortPerfumes(perfumes, sortKey, sortDir), [perfumes, sortKey, sortDir]);
+  const perfumerCounts = useMemo(() => countPerfumers(perfumes), [perfumes]);
 
   function onSort(key: SortKey) {
     if (key === sortKey) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
@@ -58,6 +60,16 @@ export default function PerfumeTable({ perfumes }: { perfumes: Perfume[] }) {
                 <Link to={`/perfume/${p.id}`} onClick={(e) => e.stopPropagation()}>{p.name}</Link>
               </td>
               <td>{p.house || "—"}</td>
+              <td>
+                {p.perfumer ? (
+                  <>
+                    {p.perfumer}
+                    {(perfumerCounts.get(p.perfumer.toLowerCase()) ?? 0) > 1 &&
+                      <span className="pt-count" title="perfumes you own from this perfumer">
+                        ×{perfumerCounts.get(p.perfumer.toLowerCase())}</span>}
+                  </>
+                ) : <span className="pt-muted">—</span>}
+              </td>
               <td className="num">{p.year ?? "—"}</td>
               <td>{p.scent_families.length ? p.scent_families.join(" · ") : "—"}</td>
               <td>
