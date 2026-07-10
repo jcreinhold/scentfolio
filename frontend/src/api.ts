@@ -68,7 +68,7 @@ export async function createPerfume(draft: Draft["perfume"]): Promise<Perfume> {
 }
 
 export async function updatePerfume(
-  id: number, patch: { my_impressions?: string; formats?: string[] }
+  id: number, patch: { my_impressions?: string; formats?: string[]; scent_families?: string[] }
 ): Promise<Perfume> {
   const r = await fetch(`/api/perfumes/${id}`, {
     method: "PATCH", headers: { "content-type": "application/json" },

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { getPerfume, updatePerfume, deletePerfume } from "../api";
 import type { Perfume, Tier } from "../types";
+import { FAMILIES } from "../lib/families";
 
 const TIERS: Tier[] = ["top", "heart", "base"];
 
@@ -22,7 +23,21 @@ export default function PerfumeDetail() {
     }
   }
 
+  // Optimistically update the family tags; revert on failure.
+  async function setFamilies(families: string[]) {
+    if (!p) return;
+    const prev = p;
+    setP({ ...p, scent_families: families });
+    try {
+      await updatePerfume(p.id, { scent_families: families });
+    } catch {
+      setP(prev);
+    }
+  }
+
   if (!p) return <div>Loading…</div>;
+
+  const available = FAMILIES.filter((f) => !p.scent_families.includes(f));
 
   return (
     <div>
@@ -31,11 +46,23 @@ export default function PerfumeDetail() {
         <h2>{p.name}</h2>
         <div className="card-sub">{p.house}{p.year ? ` · ${p.year}` : ""}
           {p.perfumer ? ` · Perfumer: ${p.perfumer}` : ""}</div>
-        {p.scent_families.length > 0 && (
-          <div className="family-tags">
-            {p.scent_families.map((f) => <span key={f} className="family-tag">{f}</span>)}
-          </div>
-        )}
+        <div className="family-tags">
+          {p.scent_families.map((f) => (
+            <span key={f} className="family-tag family-tag-editable">
+              <span>{f}</span>
+              <button type="button" className="family-tag-remove"
+                      aria-label={`Remove ${f} family`}
+                      onClick={() => setFamilies(p.scent_families.filter((x) => x !== f))}>×</button>
+            </span>
+          ))}
+          {available.length > 0 && (
+            <select className="family-add" aria-label="Add fragrance family" value=""
+                    onChange={(e) => { if (e.target.value) setFamilies([...p.scent_families, e.target.value]); }}>
+              <option value="">+ Add family</option>
+              {available.map((f) => <option key={f} value={f}>{f}</option>)}
+            </select>
+          )}
+        </div>
       </div>
 
       <div className="label">Note pyramid</div>

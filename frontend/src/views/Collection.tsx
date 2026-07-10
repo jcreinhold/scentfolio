@@ -4,9 +4,7 @@ import type { Perfume } from "../types";
 import PerfumeCard from "../components/PerfumeCard";
 import PerfumeTable from "../components/PerfumeTable";
 import { useViewMode } from "../lib/useViewMode";
-
-const FAMILIES = ["Citrus","Floral","Fruity","Green","Woody","Oriental","Fresh",
-  "Aromatic","Fougere","Chypre","Gourmand","Leather","Other"];
+import { FAMILIES } from "../lib/families";
 
 export default function Collection() {
   const [perfumes, setPerfumes] = useState<Perfume[]>([]);

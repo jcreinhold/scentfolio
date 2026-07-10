@@ -26,6 +26,23 @@ it("shows pyramid and saves impressions", async () => {
   await waitFor(() => expect(upd).toHaveBeenCalledWith(1, { my_impressions: "new" }));
 });
 
+it("adds and removes fragrance family tags", async () => {
+  vi.spyOn(api, "getPerfume").mockResolvedValue(perfume as any);
+  const upd = vi.spyOn(api, "updatePerfume").mockResolvedValue(perfume as any);
+  render(<MemoryRouter initialEntries={["/perfume/1"]}>
+    <Routes><Route path="/perfume/:id" element={<PerfumeDetail />} /></Routes>
+  </MemoryRouter>);
+  await waitFor(() => expect(screen.getByText("Aventus")).toBeInTheDocument());
+
+  // Remove "Chypre" -> persists the remaining families.
+  fireEvent.click(screen.getByLabelText("Remove Chypre family"));
+  await waitFor(() => expect(upd).toHaveBeenCalledWith(1, { scent_families: ["Woody"] }));
+
+  // Add "Gourmand" via the picker -> appended to the (optimistically updated) list.
+  fireEvent.change(screen.getByLabelText(/add fragrance family/i), { target: { value: "Gourmand" } });
+  await waitFor(() => expect(upd).toHaveBeenCalledWith(1, { scent_families: ["Woody", "Gourmand"] }));
+});
+
 it("removes the perfume and navigates home when confirmed", async () => {
   vi.spyOn(api, "getPerfume").mockResolvedValue(perfume as any);
   const del = vi.spyOn(api, "deletePerfume").mockResolvedValue(undefined);
