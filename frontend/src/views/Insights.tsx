@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
-import { insightNotes, insightFamilies, insightSimilar, reclassifyPerfumes } from "../api";
+import { insightNotes, insightFamilies, insightSimilar, reclassifyPerfumes,
+         type SimilarPair } from "../api";
 
 export default function Insights() {
   const [notes, setNotes] = useState<{ note: string; count: number }[]>([]);
   const [families, setFamilies] = useState<{ family: string; count: number }[]>([]);
-  const [similar, setSimilar] = useState<{ a: string; b: string; shared: string[]; count: number }[]>([]);
+  const [similar, setSimilar] = useState<SimilarPair[]>([]);
   const [reclassifying, setReclassifying] = useState(false);
   const [error, setError] = useState("");
 
@@ -62,12 +63,32 @@ export default function Insights() {
         </BarChart>
       </ResponsiveContainer>
 
-      <div className="label">Most similar pairs (shared notes)</div>
-      <ul>
-        {similar.slice(0, 10).map((s, i) => (
-          <li key={i}>{s.a} ↔ {s.b} — {s.count} shared ({s.shared.join(", ")})</li>
+      <div className="label">Most similar pairs</div>
+      <ul className="similar-list">
+        {similar.slice(0, 12).map((s, i) => (
+          <li key={i} className="similar-pair">
+            <div className="similar-head">
+              <span className="similar-names">{s.a} <span className="similar-x">↔</span> {s.b}</span>
+              <span className="similar-score">{Math.round(s.score * 100)}% match</span>
+            </div>
+            <div className="similar-breakdown">
+              {s.shared_families.length > 0 && <SharedGroup label="Families" items={s.shared_families} />}
+              {s.shared_top.length > 0 && <SharedGroup label="Top" items={s.shared_top} />}
+              {s.shared_heart.length > 0 && <SharedGroup label="Heart" items={s.shared_heart} />}
+              {s.shared_base.length > 0 && <SharedGroup label="Base" items={s.shared_base} />}
+            </div>
+          </li>
         ))}
       </ul>
     </div>
+  );
+}
+
+function SharedGroup({ label, items }: { label: string; items: string[] }) {
+  return (
+    <span className="similar-group">
+      <span className="similar-group-label">{label}</span>
+      {items.map((it) => <span key={it} className="chip">{it}</span>)}
+    </span>
   );
 }

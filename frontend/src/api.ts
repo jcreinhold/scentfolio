@@ -112,4 +112,9 @@ export async function enrichMissingNotes(): Promise<{ updated: number }> {
 }
 export const insightNotes = () => getJSON<{ note: string; count: number }[]>(`/api/insights/notes`);
 export const insightFamilies = () => getJSON<{ family: string; count: number }[]>(`/api/insights/families`);
-export const insightSimilar = () => getJSON<{ a: string; b: string; shared: string[]; count: number }[]>(`/api/insights/similar`);
+export interface SimilarPair {
+  a: string; b: string; score: number;
+  shared_families: string[]; shared_top: string[];
+  shared_heart: string[]; shared_base: string[];
+}
+export const insightSimilar = () => getJSON<SimilarPair[]>(`/api/insights/similar`);

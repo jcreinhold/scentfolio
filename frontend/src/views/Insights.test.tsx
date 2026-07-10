@@ -6,11 +6,13 @@ import * as api from "../api";
 it("renders note frequency, families, and similar pairs", async () => {
   vi.spyOn(api, "insightNotes").mockResolvedValue([{ note: "bergamot", count: 2 }]);
   vi.spyOn(api, "insightFamilies").mockResolvedValue([{ family: "Fresh", count: 1 }]);
-  vi.spyOn(api, "insightSimilar").mockResolvedValue([{ a: "Sauvage", b: "Aventus", shared: ["bergamot"], count: 1 }]);
+  vi.spyOn(api, "insightSimilar").mockResolvedValue([{ a: "Sauvage", b: "Aventus", score: 0.62,
+    shared_families: ["Woody"], shared_top: ["bergamot"], shared_heart: [], shared_base: [] }]);
   render(<Insights />);
   await waitFor(() => expect(screen.getByText(/Most common notes/i)).toBeInTheDocument());
   expect(screen.getByText(/Sauvage/)).toBeInTheDocument();
   expect(screen.getByText(/Aventus/)).toBeInTheDocument();
+  expect(screen.getByText("62% match")).toBeInTheDocument();
 });
 
 it("re-classifies families and refreshes the breakdown", async () => {
