@@ -33,6 +33,7 @@ class Note(Base):
     compounds: Mapped[str] = mapped_column(Text, default="")          # key synthetic materials
     sourcing: Mapped[str] = mapped_column(Text, default="")           # natural sourcing / regions
     proprietary_to: Mapped[str] = mapped_column(String(80), default="")  # captive molecule's house
+    history: Mapped[str] = mapped_column(Text, default="")            # origin story / perfumery lore
     detail_version: Mapped[int] = mapped_column(Integer, default=0)   # enrichment schema version
     perfume_notes: Mapped[list["PerfumeNote"]] = relationship(back_populates="note")
 

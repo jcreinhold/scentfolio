@@ -28,6 +28,7 @@ _ADDED_COLUMNS = {
         ("compounds", "TEXT DEFAULT ''"),
         ("sourcing", "TEXT DEFAULT ''"),
         ("proprietary_to", "VARCHAR(80) DEFAULT ''"),
+        ("history", "TEXT DEFAULT ''"),
         ("detail_version", "INTEGER DEFAULT 0"),
     ],
 }

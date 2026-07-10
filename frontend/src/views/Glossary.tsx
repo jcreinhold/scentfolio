@@ -5,7 +5,7 @@ import { listNotes, enrichMissingNotes } from "../api";
 type NoteRow = {
   id: number; name: string; family: string | null;
   description: string; origin: string; production: string;
-  compounds: string; sourcing: string; proprietary_to: string;
+  compounds: string; sourcing: string; proprietary_to: string; history: string;
 };
 
 export default function Glossary() {

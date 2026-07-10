@@ -9,15 +9,15 @@ beforeEach(() => vi.restoreAllMocks());
 const enriched = {
   id: 1, name: "bergamot", family: "Citrus", description: "Bright, zesty citrus.",
   origin: "natural", production: "Cold-pressed from the fruit peel in Calabria.",
-  compounds: "", sourcing: "Calabria, Italy", proprietary_to: "",
+  compounds: "", sourcing: "Calabria, Italy", proprietary_to: "", history: "",
 };
 const captive = {
   id: 3, name: "akigalawood", family: "Woody", description: "Woody peppery.",
   origin: "synthetic", production: "Biotech fractionation of patchouli.",
-  compounds: "patchouli fraction", sourcing: "", proprietary_to: "Givaudan",
+  compounds: "patchouli fraction", sourcing: "", proprietary_to: "Givaudan", history: "",
 };
 const blank = { id: 2, name: "ambroxan", family: "Woody", description: "", origin: "",
-  production: "", compounds: "", sourcing: "", proprietary_to: "" };
+  production: "", compounds: "", sourcing: "", proprietary_to: "", history: "" };
 
 it("renders description, origin chip, sourcing, and a proprietary badge", async () => {
   vi.spyOn(api, "listNotes").mockResolvedValue([enriched, captive, blank]);

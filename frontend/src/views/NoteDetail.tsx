@@ -42,6 +42,12 @@ export default function NoteDetail() {
           <p>{data.proprietary_to}</p>
         </>
       )}
+      {data.history && (
+        <>
+          <div className="label">History</div>
+          <p>{data.history}</p>
+        </>
+      )}
       <div className="label">In your collection ({data.perfumes.length})</div>
       <div className="grid">
         {data.perfumes.map((p) => (

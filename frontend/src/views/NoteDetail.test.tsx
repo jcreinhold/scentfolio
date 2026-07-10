@@ -9,6 +9,7 @@ it("shows note info and perfumes containing it", async () => {
     name: "bergamot", family: "Citrus", description: "Bright citrus.",
     origin: "natural", production: "Cold-pressed from the peel.",
     compounds: "", sourcing: "Calabria, Italy", proprietary_to: "",
+    history: "Named after the town of Bergamo.",
     perfumes: [{ id: 1, name: "Sauvage", house: "Dior" }],
   });
   render(<MemoryRouter initialEntries={["/note/bergamot"]}>
@@ -19,5 +20,6 @@ it("shows note info and perfumes containing it", async () => {
   expect(screen.getByText("natural")).toBeInTheDocument();
   expect(screen.getByText("Cold-pressed from the peel.")).toBeInTheDocument();
   expect(screen.getByText("Calabria, Italy")).toBeInTheDocument();  // sourcing section
+  expect(screen.getByText("Named after the town of Bergamo.")).toBeInTheDocument();  // history
   expect(screen.getByText(/Sauvage/)).toBeInTheDocument();
 });

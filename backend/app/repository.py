@@ -104,6 +104,7 @@ def apply_note_enrichment(session: Session, mapping: dict[str, dict]) -> int:
         note.compounds = data.get("compounds", "")
         note.sourcing = data.get("sourcing", "")
         note.proprietary_to = data.get("proprietary_to", "")
+        note.history = data.get("history", "")
         if not note.description and data.get("description"):
             note.description = data["description"]
         note.detail_version = ENRICH_VERSION

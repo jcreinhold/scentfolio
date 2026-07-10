@@ -21,7 +21,7 @@ def get_note_enricher():
 def get_family_classifier():
     return live_classify
 
-DESCRIBE_CHUNK = 25
+ENRICH_CHUNK = 12  # smaller batches: v3 enrichment returns long-form content
 RECLASSIFY_WORKERS = 4
 
 app = FastAPI(title="Scentfolio")
@@ -100,22 +100,24 @@ def delete_perfume(perfume_id: int, session: Session = Depends(get_session)):
 def list_notes(session: Session = Depends(get_session)):
     return [{"id": n.id, "name": n.name, "family": n.family, "description": n.description,
              "origin": n.origin, "production": n.production, "compounds": n.compounds,
-             "sourcing": n.sourcing, "proprietary_to": n.proprietary_to}
+             "sourcing": n.sourcing, "proprietary_to": n.proprietary_to, "history": n.history}
             for n in repo.list_notes(session)]
 
 @app.post("/api/notes/enrich-missing")
 def enrich_missing_notes(session: Session = Depends(get_session),
                          enrich=Depends(get_note_enricher)):
     names = [n.name for n in repo.notes_missing_enrichment(session)]
-    mapping: dict[str, dict] = {}
-    for i in range(0, len(names), DESCRIBE_CHUNK):
-        chunk = names[i:i + DESCRIBE_CHUNK]
+    updated = 0
+    # Persist per chunk so long runs make durable progress even if the request is
+    # interrupted; a re-run resumes via the version check (notes_missing_enrichment).
+    for i in range(0, len(names), ENRICH_CHUNK):
+        chunk = names[i:i + ENRICH_CHUNK]
         try:
-            mapping.update(enrich(chunk))
+            updated += repo.apply_note_enrichment(session, enrich(chunk))
         except LookupError:
             continue  # skip a failed chunk; others still apply
-    updated = repo.apply_note_enrichment(session, mapping)
-    return {"updated": updated}
+    remaining = len(repo.notes_missing_enrichment(session))
+    return {"updated": updated, "remaining": remaining}
 
 @app.get("/api/notes/{note_name}")
 def note_detail(note_name: str, session: Session = Depends(get_session)):
@@ -131,6 +133,7 @@ def note_detail(note_name: str, session: Session = Depends(get_session)):
         "compounds": n.compounds if n else "",
         "sourcing": n.sourcing if n else "",
         "proprietary_to": n.proprietary_to if n else "",
+        "history": n.history if n else "",
         "perfumes": [{"id": p.id, "name": p.name, "house": p.house} for p in perfumes],
     }
 

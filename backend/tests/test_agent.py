@@ -81,7 +81,8 @@ def test_enrich_notes_returns_full_object_for_requested_names():
         "akigalawood": {"description": "Woody peppery.", "origin": "synthetic",
                         "production": "Made by biotech fractionation of patchouli.",
                         "compounds": "patchouli-derived fraction", "sourcing": "",
-                        "proprietary_to": "Givaudan"},
+                        "proprietary_to": "Givaudan",
+                        "history": "Introduced by Givaudan in 2015."},
         "extra": {"description": "x", "origin": "natural", "production": "y"}}))
     out = enrich_notes(["bergamot", "akigalawood"], client=client)
     assert set(out) == {"bergamot", "akigalawood"}  # only requested names kept
@@ -89,6 +90,7 @@ def test_enrich_notes_returns_full_object_for_requested_names():
     assert out["bergamot"]["compounds"] == ""
     assert out["akigalawood"]["proprietary_to"] == "Givaudan"
     assert out["akigalawood"]["compounds"] == "patchouli-derived fraction"
+    assert out["akigalawood"]["history"] == "Introduced by Givaudan in 2015."
 
 def test_enrich_notes_empty_input_makes_no_call():
     client = _FakeClient("{}")

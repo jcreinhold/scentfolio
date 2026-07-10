@@ -95,26 +95,31 @@ VALID_ORIGINS = {"natural", "synthetic", "both"}
 
 # Bump when enrich_notes' output shape grows so existing notes get re-enriched.
 # v1: description, origin, production.  v2: + compounds, sourcing, proprietary_to.
-ENRICH_VERSION = 2
+# v3: richer educational sourcing/compounds + history.
+ENRICH_VERSION = 3
 
 NOTE_ENRICH_PROMPT = (
-    "You are a fragrance expert. For each perfume note name given (a JSON array), "
-    "return an object with keys: "
+    "You are a fragrance expert writing for an enthusiast who wants to LEARN about "
+    "perfumery. For each perfume note name given (a JSON array), return an object "
+    "with keys: "
     "'description' (1-2 sentences on what it smells like — its olfactory character "
     "and associations); "
     "'origin' (one of 'natural', 'synthetic', or 'both' — how the note is USUALLY "
     "sourced in modern perfumery); "
     "'production' (1-2 interesting sentences on how a natural note is harvested/"
     "extracted, or how a synthetic material or accord is constructed); "
-    "'compounds' (for synthetic or accord notes, the key chemical compounds or "
-    "aroma materials typically used, e.g. 'galaxolide, ISO E Super'; empty string "
-    "for pure naturals); "
-    "'sourcing' (for natural notes, where it is typically grown/sourced and the "
-    "main producing regions, e.g. 'Grasse, France; Bulgaria; Turkey'; empty string "
-    "for pure synthetics); "
+    "'compounds' (for synthetic or accord notes, break down the KEY aroma-chemicals "
+    "and what EACH one smells like — e.g. for aldehydes: C-10 waxy orange peel, "
+    "C-11 green, C-12 soapy/lilac; 2-4 sentences; empty string for pure naturals); "
+    "'sourcing' (for natural notes, 2-4 sentences on how the scent differs by origin "
+    "and terroir — e.g. Bulgarian vs Turkish vs Grasse rose — where it is most "
+    "prized, and relevant cultural background; empty string for pure synthetics); "
     "'proprietary_to' (if the material is a known captive/proprietary molecule, the "
     "fragrance house or supplier it belongs to, e.g. Akigalawood -> 'Givaudan'; "
-    "empty string otherwise). "
+    "empty string otherwise); "
+    "'history' (2-3 sentences: the material's origin or discovery story, a notable "
+    "moment in perfumery — e.g. aldehydes in Chanel No.5 — and its cultural "
+    "significance). "
     "Return ONLY a JSON object (no prose) mapping each note name, EXACTLY as given, "
     "to its object."
 )
@@ -136,7 +141,7 @@ def enrich_notes(names: list[str], client=None) -> dict[str, dict]:
         client = Anthropic()
     resp = client.messages.create(
         model="claude-haiku-4-5-20251001",
-        max_tokens=6000,
+        max_tokens=8000,
         system=NOTE_ENRICH_PROMPT,
         messages=[{"role": "user", "content": json.dumps(names)}],
     )
@@ -158,6 +163,7 @@ def enrich_notes(names: list[str], client=None) -> dict[str, dict]:
             "compounds": _clean_str(entry, "compounds"),
             "sourcing": _clean_str(entry, "sourcing"),
             "proprietary_to": _clean_str(entry, "proprietary_to"),
+            "history": _clean_str(entry, "history"),
         }
     return out
 

@@ -96,13 +96,14 @@ export const checkDuplicate = (name: string, house: string) =>
 export const getNote = (name: string) =>
   getJSON<{ name: string; family: string | null; description: string;
             origin: string; production: string; compounds: string;
-            sourcing: string; proprietary_to: string;
+            sourcing: string; proprietary_to: string; history: string;
             perfumes: { id: number; name: string; house: string }[] }>(
     `/api/notes/${encodeURIComponent(name)}`);
 export const listNotes = () =>
   getJSON<{ id: number; name: string; family: string | null;
             description: string; origin: string; production: string;
-            compounds: string; sourcing: string; proprietary_to: string }[]>(`/api/notes`);
+            compounds: string; sourcing: string; proprietary_to: string;
+            history: string }[]>(`/api/notes`);
 
 export async function enrichMissingNotes(): Promise<{ updated: number }> {
   const r = await fetch("/api/notes/enrich-missing", { method: "POST" });
