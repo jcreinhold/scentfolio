@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { listPerfumes, deletePerfume, updatePerfume } from "../api";
 import type { Perfume } from "../types";
 import PerfumeCard from "../components/PerfumeCard";
+import PerfumeTable from "../components/PerfumeTable";
+import { useViewMode } from "../lib/useViewMode";
 
 const FAMILIES = ["Citrus","Floral","Woody","Oriental","Fresh","Aromatic",
   "Fougere","Chypre","Gourmand","Leather","Other"];
@@ -11,6 +13,7 @@ export default function Collection() {
   const [q, setQ] = useState("");
   const [family, setFamily] = useState("");
   const [fmt, setFmt] = useState("");
+  const [view, setView] = useViewMode();
 
   useEffect(() => {
     listPerfumes({ q: q || undefined, family: family || undefined, fmt: fmt || undefined })
@@ -37,12 +40,20 @@ export default function Collection() {
 
   return (
     <div>
-      <div className="page-head">
-        <div className="eyebrow">The Collection</div>
-        <h2>Your fragrance wardrobe</h2>
-        <div className="page-sub">
-          {perfumes.length} {perfumes.length === 1 ? "scent" : "scents"}
-          {filtering ? " matching your filters" : " on the shelf"}
+      <div className="collection-head">
+        <div className="page-head">
+          <div className="eyebrow">The Collection</div>
+          <h2>Your fragrance wardrobe</h2>
+          <div className="page-sub">
+            {perfumes.length} {perfumes.length === 1 ? "scent" : "scents"}
+            {filtering ? " matching your filters" : " on the shelf"}
+          </div>
+        </div>
+        <div role="tablist" aria-label="Collection view" className="view-toggle">
+          <button role="tab" aria-selected={view === "cards"} disabled={view === "cards"}
+                  onClick={() => setView("cards")}>Cards</button>
+          <button role="tab" aria-selected={view === "table"} disabled={view === "table"}
+                  onClick={() => setView("table")}>Table</button>
         </div>
       </div>
 
@@ -66,6 +77,8 @@ export default function Collection() {
           <div className="empty-title">{filtering ? "Nothing matches" : "Your shelf is empty"}</div>
           <div>{filtering ? "Try loosening a filter." : "Add your first scent to begin the archive."}</div>
         </div>
+      ) : view === "table" ? (
+        <PerfumeTable perfumes={perfumes} />
       ) : (
         <div className="grid">
           {perfumes.map((p) => (

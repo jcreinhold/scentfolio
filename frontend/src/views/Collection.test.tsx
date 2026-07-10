@@ -1,8 +1,12 @@
 import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
-import { it, expect, vi } from "vitest";
+import { it, expect, vi, beforeEach } from "vitest";
 import Collection from "./Collection";
 import * as api from "../api";
+
+// The view toggle persists to localStorage; isolate each test so the default
+// (card view) is deterministic regardless of order.
+beforeEach(() => localStorage.clear());
 
 const sauvage = {
   id: 1, name: "Sauvage", house: "Dior", perfumer: null, year: 2015,
@@ -26,6 +30,17 @@ it("removes a perfume from the grid when its ✕ is confirmed", async () => {
   fireEvent.click(screen.getByLabelText("Remove Sauvage"));
   await waitFor(() => expect(del).toHaveBeenCalledWith(1));
   await waitFor(() => expect(screen.queryByText("Sauvage")).not.toBeInTheDocument());
+});
+
+it("switches to the sortable table view via the toggle", async () => {
+  vi.spyOn(api, "listPerfumes").mockResolvedValue([sauvage as any]);
+  render(<MemoryRouter><Collection /></MemoryRouter>);
+  await waitFor(() => expect(screen.getByText("Sauvage")).toBeInTheDocument());
+
+  fireEvent.click(screen.getByRole("tab", { name: "Table" }));
+  // A sortable column header (unique to the table view) is now present.
+  expect(screen.getByRole("button", { name: /house/i })).toBeInTheDocument();
+  expect(screen.getByRole("link", { name: "Sauvage" })).toHaveAttribute("href", "/perfume/1");
 });
 
 it("toggles a size on a card and persists it", async () => {
