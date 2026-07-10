@@ -4,19 +4,22 @@ import Insights from "./Insights";
 import * as api from "../api";
 
 it("renders note frequency, families, and similar pairs", async () => {
-  vi.spyOn(api, "insightNotes").mockResolvedValue([{ note: "bergamot", count: 2 }]);
+  vi.spyOn(api, "insightNotes").mockResolvedValue({
+    top: [{ note: "bergamot", count: 2 }], heart: [{ note: "rose", count: 1 }], base: [] });
   vi.spyOn(api, "insightFamilies").mockResolvedValue([{ family: "Fresh", count: 1 }]);
   vi.spyOn(api, "insightSimilar").mockResolvedValue([{ a: "Sauvage", b: "Aventus", score: 0.62,
     shared_families: ["Woody"], shared_top: ["bergamot"], shared_heart: [], shared_base: [] }]);
   render(<Insights />);
-  await waitFor(() => expect(screen.getByText(/Most common notes/i)).toBeInTheDocument());
+  await waitFor(() => expect(screen.getByText(/most common top notes/i)).toBeInTheDocument());
+  expect(screen.getByText(/most common heart notes/i)).toBeInTheDocument();
+  expect(screen.getByText(/most common base notes/i)).toBeInTheDocument();
   expect(screen.getByText(/Sauvage/)).toBeInTheDocument();
   expect(screen.getByText(/Aventus/)).toBeInTheDocument();
   expect(screen.getByText("62% match")).toBeInTheDocument();
 });
 
 it("re-classifies families and refreshes the breakdown", async () => {
-  vi.spyOn(api, "insightNotes").mockResolvedValue([]);
+  vi.spyOn(api, "insightNotes").mockResolvedValue({ top: [], heart: [], base: [] });
   vi.spyOn(api, "insightSimilar").mockResolvedValue([]);
   const fam = vi.spyOn(api, "insightFamilies")
     .mockResolvedValueOnce([{ family: "Woody", count: 1 }])   // initial

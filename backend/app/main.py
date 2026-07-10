@@ -139,7 +139,9 @@ def note_detail(note_name: str, session: Session = Depends(get_session)):
 
 @app.get("/api/insights/notes")
 def insight_notes(session: Session = Depends(get_session)):
-    return [{"note": name, "count": c} for name, c in queries.note_frequency(session)]
+    by_tier = queries.note_frequency_by_tier(session)
+    return {tier: [{"note": name, "count": c} for name, c in rows]
+            for tier, rows in by_tier.items()}
 
 @app.get("/api/insights/families")
 def insight_families(session: Session = Depends(get_session)):

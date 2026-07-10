@@ -1,10 +1,17 @@
 import { useEffect, useState } from "react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 import { insightNotes, insightFamilies, insightSimilar, reclassifyPerfumes,
-         type SimilarPair } from "../api";
+         type SimilarPair, type NotesByTier, type NoteCount } from "../api";
+
+const EMPTY_NOTES: NotesByTier = { top: [], heart: [], base: [] };
+const NOTE_TIERS: { key: keyof NotesByTier; label: string; fill: string }[] = [
+  { key: "top", label: "Most common top notes", fill: "#b08315" },
+  { key: "heart", label: "Most common heart notes", fill: "#b0562b" },
+  { key: "base", label: "Most common base notes", fill: "#5f6b48" },
+];
 
 export default function Insights() {
-  const [notes, setNotes] = useState<{ note: string; count: number }[]>([]);
+  const [notes, setNotes] = useState<NotesByTier>(EMPTY_NOTES);
   const [families, setFamilies] = useState<{ family: string; count: number }[]>([]);
   const [similar, setSimilar] = useState<SimilarPair[]>([]);
   const [reclassifying, setReclassifying] = useState(false);
@@ -43,15 +50,12 @@ export default function Insights() {
       </div>
       {error && <p style={{ color: "crimson" }}>{error}</p>}
 
-      <div className="label">Most common notes</div>
-      <ResponsiveContainer width="100%" height={240}>
-        <BarChart data={notes.slice(0, 12)}>
-          <XAxis dataKey="note" tick={{ fontSize: 12, fill: "#938975" }} />
-          <YAxis allowDecimals={false} tick={{ fontSize: 12, fill: "#938975" }} />
-          <Tooltip cursor={{ fill: "rgba(157,74,36,0.08)" }} />
-          <Bar dataKey="count" fill="#b0562b" radius={[4, 4, 0, 0]} />
-        </BarChart>
-      </ResponsiveContainer>
+      {NOTE_TIERS.map(({ key, label, fill }) => (
+        <div key={key}>
+          <div className="label">{label}</div>
+          <NoteTierChart data={notes[key]} fill={fill} />
+        </div>
+      ))}
 
       <div className="label">Scent families</div>
       <ResponsiveContainer width="100%" height={240}>
@@ -81,6 +85,20 @@ export default function Insights() {
         ))}
       </ul>
     </div>
+  );
+}
+
+function NoteTierChart({ data, fill }: { data: NoteCount[]; fill: string }) {
+  if (data.length === 0) return <p className="chart-empty">No notes in this tier yet.</p>;
+  return (
+    <ResponsiveContainer width="100%" height={220}>
+      <BarChart data={data.slice(0, 10)}>
+        <XAxis dataKey="note" tick={{ fontSize: 12, fill: "#938975" }} />
+        <YAxis allowDecimals={false} tick={{ fontSize: 12, fill: "#938975" }} />
+        <Tooltip cursor={{ fill: "rgba(157,74,36,0.08)" }} />
+        <Bar dataKey="count" fill={fill} radius={[4, 4, 0, 0]} />
+      </BarChart>
+    </ResponsiveContainer>
   );
 }
 

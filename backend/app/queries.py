@@ -23,11 +23,19 @@ def search_perfumes(session: Session, q: str | None = None, family: str | None =
     ps = session.execute(stmt).scalars().unique().all()
     return [_to_out(p) for p in ps]
 
-def note_frequency(session: Session) -> list[tuple[str, int]]:
-    stmt = (select(Note.name, func.count(func.distinct(PerfumeNote.perfume_id)))
-            .join(PerfumeNote).group_by(Note.name)
-            .order_by(func.count(func.distinct(PerfumeNote.perfume_id)).desc()))
-    return [(name, count) for name, count in session.execute(stmt).all()]
+def note_frequency_by_tier(session: Session) -> dict[str, list[tuple[str, int]]]:
+    """How often each note is used, split by the role (tier) it plays. Counting
+    per-tier keeps near-universal base notes from swamping the overall picture."""
+    stmt = (select(Note.name, PerfumeNote.tier,
+                   func.count(func.distinct(PerfumeNote.perfume_id)))
+            .join(PerfumeNote).group_by(Note.name, PerfumeNote.tier))
+    by_tier: dict[str, list[tuple[str, int]]] = {"top": [], "heart": [], "base": []}
+    for name, tier, count in session.execute(stmt).all():
+        if tier in by_tier:
+            by_tier[tier].append((name, count))
+    for tier in by_tier:
+        by_tier[tier].sort(key=lambda nc: nc[1], reverse=True)
+    return by_tier
 
 def family_breakdown(session: Session) -> list[tuple[str, int]]:
     """Count each family across perfumes. Families are stored comma-joined, so a

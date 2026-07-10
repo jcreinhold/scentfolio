@@ -561,6 +561,8 @@ textarea#imp { min-height: 96px; }
   color: var(--ink-soft);
 }
 
+.chart-empty { color: var(--muted); font-size: 13px; font-style: italic; padding: 8px 0 4px; }
+
 /* ---------- Similar pairs ---------- */
 .similar-pair { display: flex; flex-direction: column; gap: 8px; }
 .similar-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }

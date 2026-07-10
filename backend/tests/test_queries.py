@@ -26,11 +26,15 @@ def test_filter_by_family_and_format(session):
     fmt = queries.search_perfumes(session, fmt="full")
     assert [p.name for p in fmt] == ["Sauvage"]
 
-def test_note_frequency(session):
+def test_note_frequency_by_tier(session):
     _seed(session)
-    freq = dict(queries.note_frequency(session))
-    assert freq["bergamot"] == 2
-    assert freq["birch"] == 1
+    by_tier = queries.note_frequency_by_tier(session)
+    # bergamot is a TOP note in both perfumes; birch heart, ambroxan base (once each).
+    assert dict(by_tier["top"])["bergamot"] == 2
+    assert dict(by_tier["heart"]) == {"birch": 1}
+    assert dict(by_tier["base"]) == {"ambroxan": 1}
+    # bergamot is only ever a top note here -> not counted under heart/base.
+    assert "bergamot" not in dict(by_tier["base"])
 
 def test_family_breakdown(session):
     _seed(session)

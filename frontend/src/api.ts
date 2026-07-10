@@ -110,7 +110,9 @@ export async function enrichMissingNotes(): Promise<{ updated: number }> {
   if (!r.ok) throw new Error("Failed to enrich notes");
   return r.json();
 }
-export const insightNotes = () => getJSON<{ note: string; count: number }[]>(`/api/insights/notes`);
+export interface NoteCount { note: string; count: number; }
+export interface NotesByTier { top: NoteCount[]; heart: NoteCount[]; base: NoteCount[]; }
+export const insightNotes = () => getJSON<NotesByTier>(`/api/insights/notes`);
 export const insightFamilies = () => getJSON<{ family: string; count: number }[]>(`/api/insights/families`);
 export interface SimilarPair {
   a: string; b: string; score: number;
