@@ -22,7 +22,7 @@ def _to_out(p: Perfume) -> PerfumeOut:
     notes = [NoteOut(id=pn.note.id, name=pn.note.name, tier=pn.tier,
                      family=pn.note.family) for pn in p.perfume_notes]
     return PerfumeOut(
-        id=p.id, name=p.name, house=p.house, perfumer=p.perfumer, year=p.year,
+        id=p.id, name=p.name, status=p.status, house=p.house, perfumer=p.perfumer, year=p.year,
         scent_families=[f for f in (p.scent_family or "").split(",") if f],
         description=p.description, my_impressions=p.my_impressions,
         formats=[f for f in p.formats.split(",") if f],
@@ -30,7 +30,7 @@ def _to_out(p: Perfume) -> PerfumeOut:
         notes=notes)
 
 def create_perfume(session: Session, data: PerfumeCreate) -> PerfumeOut:
-    p = Perfume(name=data.name, house=data.house, perfumer=data.perfumer,
+    p = Perfume(name=data.name, status=data.status, house=data.house, perfumer=data.perfumer,
                 year=data.year, scent_family=",".join(data.scent_families),
                 description=data.description, my_impressions=data.my_impressions,
                 formats=",".join(data.formats), source_urls="\n".join(data.source_urls))
@@ -47,8 +47,11 @@ def get_perfume(session: Session, perfume_id: int) -> PerfumeOut | None:
     p = session.get(Perfume, perfume_id)
     return _to_out(p) if p else None
 
-def list_perfumes(session: Session) -> list[PerfumeOut]:
-    ps = session.execute(select(Perfume).order_by(Perfume.created_at.desc())).scalars().all()
+def list_perfumes(session: Session, status: str | None = None) -> list[PerfumeOut]:
+    stmt = select(Perfume).order_by(Perfume.created_at.desc())
+    if status:
+        stmt = stmt.where(Perfume.status == status)
+    ps = session.execute(stmt).scalars().all()
     return [_to_out(p) for p in ps]
 
 def update_perfume(session: Session, perfume_id: int, data: PerfumeUpdate) -> PerfumeOut | None:
@@ -61,6 +64,8 @@ def update_perfume(session: Session, perfume_id: int, data: PerfumeUpdate) -> Pe
         p.formats = ",".join(data.formats)
     if data.scent_families is not None:
         p.scent_family = ",".join(data.scent_families)
+    if data.status is not None:
+        p.status = data.status
     session.commit()
     session.refresh(p)
     return _to_out(p)

@@ -27,3 +27,12 @@ def test_ensure_schema_adds_missing_columns_idempotently():
 
     ensure_schema(engine)  # idempotent — must not raise or duplicate
     assert _note_columns(engine) == cols
+
+def test_ensure_schema_adds_status_to_legacy_perfumes_table():
+    engine = make_engine("sqlite:///:memory:")
+    with engine.begin() as conn:
+        conn.exec_driver_sql("CREATE TABLE perfumes (id INTEGER PRIMARY KEY, name VARCHAR)")
+    ensure_schema(engine)
+    with engine.connect() as conn:
+        cols = {row[1] for row in conn.exec_driver_sql("PRAGMA table_info(perfumes)")}
+    assert "status" in cols

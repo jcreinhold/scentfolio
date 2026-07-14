@@ -33,6 +33,21 @@ def test_search_by_note(client):
     r = client.get("/api/perfumes", params={"q": "bergamot"})
     assert [p["name"] for p in r.json()] == ["Sauvage"]
 
+def test_status_filter_and_move(client):
+    _create(client, name="Owned")
+    client.post("/api/perfumes", json={"name": "Wanted", "house": "H", "status": "saved",
+                "notes": [{"name": "bergamot", "tier": "top"}]})
+    coll = client.get("/api/perfumes", params={"status": "collection"}).json()
+    saved = client.get("/api/perfumes", params={"status": "saved"}).json()
+    assert [p["name"] for p in coll] == ["Owned"]
+    assert [p["name"] for p in saved] == ["Wanted"]
+
+    # Move the saved one into the collection.
+    wid = saved[0]["id"]
+    r = client.patch(f"/api/perfumes/{wid}", json={"status": "collection"})
+    assert r.json()["status"] == "collection"
+    assert client.get("/api/perfumes", params={"status": "saved"}).json() == []
+
 def test_note_detail_lists_perfumes(client):
     _create(client)
     r = client.get("/api/notes/bergamot")

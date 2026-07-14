@@ -71,10 +71,11 @@ def check_duplicate(name: str, house: str = "", session: Session = Depends(get_s
 
 @app.get("/api/perfumes")
 def list_perfumes(q: str | None = None, family: str | None = None,
-                  fmt: str | None = None, session: Session = Depends(get_session)):
+                  fmt: str | None = None, status: str | None = None,
+                  session: Session = Depends(get_session)):
     if q or family or fmt:
-        return queries.search_perfumes(session, q=q, family=family, fmt=fmt)
-    return repo.list_perfumes(session)
+        return queries.search_perfumes(session, q=q, family=family, fmt=fmt, status=status)
+    return repo.list_perfumes(session, status=status)
 
 @app.get("/api/perfumes/{perfume_id}")
 def get_perfume(perfume_id: int, session: Session = Depends(get_session)):

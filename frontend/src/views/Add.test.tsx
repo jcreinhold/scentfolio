@@ -35,3 +35,22 @@ it("warns when the looked-up perfume is already in the collection", async () => 
   fireEvent.click(screen.getByText(/look up/i));
   await waitFor(() => expect(screen.getByText(/already have a perfume/i)).toBeInTheDocument());
 });
+
+it("saves to the Saved section when that destination is chosen", async () => {
+  vi.spyOn(api, "lookupPerfume").mockResolvedValue({
+    confidence: "high",
+    perfume: { name: "Aventus", house: "Creed", perfumer: null, year: null,
+      scent_families: ["Chypre"], description: "", my_impressions: "",
+      formats: [], source_urls: [], notes: [] },
+  } as any);
+  vi.spyOn(api, "checkDuplicate").mockResolvedValue({ duplicate: false, id: null });
+  const create = vi.spyOn(api, "createPerfume").mockResolvedValue({ id: 9 } as any);
+
+  render(<MemoryRouter><Add /></MemoryRouter>);
+  fireEvent.click(screen.getByRole("tab", { name: "Saved" }));  // destination toggle
+  fireEvent.change(screen.getByPlaceholderText(/perfume by name/i), { target: { value: "Aventus" } });
+  fireEvent.click(screen.getByText(/look up/i));
+  await waitFor(() => expect(screen.getByDisplayValue("Aventus")).toBeInTheDocument());
+  fireEvent.click(screen.getByText(/save to saved/i));
+  await waitFor(() => expect(create).toHaveBeenCalledWith(expect.objectContaining({ status: "saved" })));
+});

@@ -35,6 +35,13 @@ export default function PerfumeDetail() {
     }
   }
 
+  async function moveStatus() {
+    if (!p) return;
+    const next = p.status === "saved" ? "collection" : "saved";
+    const updated = await updatePerfume(p.id, { status: next });
+    setP({ ...p, status: updated.status });
+  }
+
   if (!p) return <div>Loading…</div>;
 
   const available = FAMILIES.filter((f) => !p.scent_families.includes(f));
@@ -42,7 +49,7 @@ export default function PerfumeDetail() {
   return (
     <div>
       <div className="page-head">
-        <div className="eyebrow">From the archive</div>
+        <div className="eyebrow">{p.status === "saved" ? "Saved · not in collection" : "From the archive"}</div>
         <h2>{p.name}</h2>
         <div className="card-sub">{p.house}{p.year ? ` · ${p.year}` : ""}
           {p.perfumer ? ` · Perfumer: ${p.perfumer}` : ""}</div>
@@ -92,8 +99,12 @@ export default function PerfumeDetail() {
       <button onClick={() => updatePerfume(p.id, { my_impressions: impressions })}
               style={{ marginTop: 8 }}>Save impressions</button>
 
-      <div style={{ marginTop: 32, borderTop: "1px solid #eee", paddingTop: 16 }}>
-        <button className="btn-danger" onClick={remove}>Remove from collection</button>
+      <div style={{ marginTop: 32, borderTop: "1px solid #eee", paddingTop: 16,
+                    display: "flex", gap: 10, flexWrap: "wrap" }}>
+        <button onClick={moveStatus}>
+          {p.status === "saved" ? "Move to collection" : "Move to saved"}
+        </button>
+        <button className="btn-danger" onClick={remove}>Remove</button>
       </div>
     </div>
   );

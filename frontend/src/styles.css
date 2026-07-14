@@ -668,6 +668,11 @@ textarea#imp { min-height: 96px; }
 }
 .collection-head .page-head { margin-bottom: 0; }
 .view-toggle { margin-bottom: 0; flex-shrink: 0; }
+.add-dest { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+.add-dest-label {
+  font-family: var(--mono); font-size: 10px; letter-spacing: 0.16em;
+  text-transform: uppercase; color: var(--muted);
+}
 
 /* ---------- Collection table (fragrance ledger) ---------- */
 .table-wrap {

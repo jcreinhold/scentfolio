@@ -16,6 +16,7 @@ export default function App() {
           <div className="brand-eyebrow">Personal Fragrance Archive</div>
           <nav>
             <NavLink to="/" end>Collection</NavLink>
+            <NavLink to="/saved">Saved</NavLink>
             <NavLink to="/add">Add a Scent</NavLink>
             <NavLink to="/insights">Insights</NavLink>
             <NavLink to="/glossary">Note Glossary</NavLink>
@@ -24,7 +25,8 @@ export default function App() {
         </div>
         <main className="content">
           <Routes>
-            <Route path="/" element={<Collection />} />
+            <Route path="/" element={<Collection status="collection" />} />
+            <Route path="/saved" element={<Collection status="saved" />} />
             <Route path="/add" element={<Add />} />
             <Route path="/perfume/:id" element={<PerfumeDetail />} />
             <Route path="/insights" element={<Insights />} />

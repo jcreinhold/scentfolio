@@ -8,6 +8,7 @@ const FORMATS: Format[] = ["full", "travel", "sample"];
 
 export default function Add() {
   const [mode, setMode] = useState<"single" | "batch">("single");
+  const [dest, setDest] = useState<"collection" | "saved">("collection");
   const [name, setName] = useState("");
   const [draft, setDraft] = useState<Draft | null>(null);
   const [error, setError] = useState("");
@@ -46,7 +47,7 @@ export default function Add() {
   async function save() {
     if (!draft) return;
     try {
-      const created = await createPerfume(draft.perfume);
+      const created = await createPerfume({ ...draft.perfume, status: dest });
       nav(`/perfume/${created.id}`);
     } catch (e: any) {
       setError(e.message);
@@ -60,6 +61,17 @@ export default function Add() {
         <h2>Add a perfume</h2>
         <div className="page-sub">Look one up by name, or paste a whole list to add in bulk.</div>
       </div>
+
+      <div className="add-dest">
+        <span className="add-dest-label">Add to</span>
+        <div role="tablist" aria-label="Destination" className="view-toggle">
+          <button role="tab" aria-selected={dest === "collection"} disabled={dest === "collection"}
+                  onClick={() => setDest("collection")}>Collection</button>
+          <button role="tab" aria-selected={dest === "saved"} disabled={dest === "saved"}
+                  onClick={() => setDest("saved")}>Saved</button>
+        </div>
+      </div>
+
       <div className="filters" role="tablist">
         <button role="tab" aria-selected={mode === "single"} disabled={mode === "single"}
                 onClick={() => setMode("single")}>One at a time</button>
@@ -67,7 +79,7 @@ export default function Add() {
                 onClick={() => setMode("batch")}>Batch add</button>
       </div>
 
-      {mode === "batch" ? <BatchAdd /> : (
+      {mode === "batch" ? <BatchAdd status={dest} /> : (
       <>
       <div style={{ display: "flex", gap: 8 }}>
         <input className="search" placeholder="Add a perfume by name…"
@@ -106,7 +118,9 @@ export default function Add() {
           {draft.perfume.source_urls.map((u) => (
             <div key={u}><a href={u} target="_blank" rel="noreferrer">{u}</a></div>
           ))}
-          <button onClick={save} style={{ marginTop: 12 }}>Save to collection</button>
+          <button onClick={save} style={{ marginTop: 12 }}>
+            {dest === "saved" ? "Save to Saved" : "Save to collection"}
+          </button>
         </div>
       )}
       </>

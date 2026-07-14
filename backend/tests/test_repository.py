@@ -41,6 +41,20 @@ def test_find_duplicate_is_case_insensitive(session):
     repo.create_perfume(session, PerfumeCreate(name="Aventus", house="Creed", notes=[]))
     assert repo.find_duplicate(session, "aventus", "CREED") is not None
 
+def test_list_perfumes_filters_by_status(session):
+    repo.create_perfume(session, PerfumeCreate(name="Owned", house="H", notes=[]))  # default collection
+    repo.create_perfume(session, PerfumeCreate(name="Wanted", house="H", status="saved", notes=[]))
+    assert [p.name for p in repo.list_perfumes(session, status="collection")] == ["Owned"]
+    assert [p.name for p in repo.list_perfumes(session, status="saved")] == ["Wanted"]
+    assert {p.name for p in repo.list_perfumes(session)} == {"Owned", "Wanted"}  # no filter -> all
+
+def test_update_moves_between_sections(session):
+    created = repo.create_perfume(session, PerfumeCreate(name="Wanted", house="H", status="saved", notes=[]))
+    from app.schemas import PerfumeUpdate
+    moved = repo.update_perfume(session, created.id, PerfumeUpdate(status="collection"))
+    assert moved.status == "collection"
+    assert [p.name for p in repo.list_perfumes(session, status="saved")] == []
+
 def test_notes_missing_enrichment_by_version(session):
     repo.create_perfume(session, _sample())  # bergamot, ambroxan at version 0 (stale)
     assert {n.name for n in repo.notes_missing_enrichment(session)} == {"bergamot", "ambroxan"}

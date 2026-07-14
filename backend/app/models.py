@@ -10,6 +10,7 @@ class Perfume(Base):
     __tablename__ = "perfumes"
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(200))
+    status: Mapped[str] = mapped_column(String(20), default="collection")  # collection | saved
     house: Mapped[str] = mapped_column(String(200), default="")
     perfumer: Mapped[str | None] = mapped_column(String(200), nullable=True)
     year: Mapped[int | None] = mapped_column(Integer, nullable=True)

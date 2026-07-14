@@ -34,7 +34,7 @@ function parseNames(text: string): string[] {
   return names;
 }
 
-export default function BatchAdd() {
+export default function BatchAdd({ status = "collection" }: { status?: string }) {
   const [text, setText] = useState("");
   const [rows, setRows] = useState<Row[] | null>(null);
   const [running, setRunning] = useState(false);
@@ -80,7 +80,7 @@ export default function BatchAdd() {
     toSave.forEach(({ i }) => update(i, { saveState: "saving", saveError: undefined }));
 
     const results = await mapPool(toSave, SAVE_CONCURRENCY, async ({ r }) => {
-      await createPerfume(r.draft!.perfume);
+      await createPerfume({ ...r.draft!.perfume, status });
     }, (poolIdx, res) => {
       const { i } = toSave[poolIdx];
       if (res.ok) update(i, { saveState: "saved" });

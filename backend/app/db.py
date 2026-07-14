@@ -22,6 +22,7 @@ def make_sessionmaker(engine):
 # only creates missing tables, never alters existing ones, and there is no
 # migration tool — so this idempotent, additive step heals an older SQLite file.
 _ADDED_COLUMNS = {
+    "perfumes": [("status", "VARCHAR(20) DEFAULT 'collection'")],
     "notes": [
         ("origin", "VARCHAR(20) DEFAULT ''"),
         ("production", "TEXT DEFAULT ''"),
@@ -39,6 +40,8 @@ def ensure_schema(engine):
     with engine.begin() as conn:
         for table, columns in _ADDED_COLUMNS.items():
             existing = {row[1] for row in conn.exec_driver_sql(f"PRAGMA table_info({table})")}
+            if not existing:
+                continue  # table doesn't exist yet (create_all handles new tables)
             for name, ddl in columns:
                 if name not in existing:
                     conn.exec_driver_sql(f"ALTER TABLE {table} ADD COLUMN {name} {ddl}")

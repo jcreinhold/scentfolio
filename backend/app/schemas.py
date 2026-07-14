@@ -3,6 +3,7 @@ from pydantic import BaseModel, Field
 
 Tier = Literal["top", "heart", "base"]
 Format = Literal["full", "travel", "sample"]
+Status = Literal["collection", "saved"]
 Family = Literal["Citrus", "Floral", "Fruity", "Green", "Woody",
                  "Fresh", "Aromatic", "Fougere", "Chypre", "Gourmand", "Leather", "Other"]
 
@@ -13,6 +14,7 @@ class NoteInput(BaseModel):
 
 class PerfumeCreate(BaseModel):
     name: str
+    status: Status = "collection"
     house: str = ""
     perfumer: str | None = None
     year: int | None = None
@@ -27,6 +29,7 @@ class PerfumeUpdate(BaseModel):
     my_impressions: str | None = None
     formats: list[Format] | None = None
     scent_families: list[Family] | None = None
+    status: Status | None = None
 
 class NoteOut(BaseModel):
     id: int
@@ -37,6 +40,7 @@ class NoteOut(BaseModel):
 class PerfumeOut(BaseModel):
     id: int
     name: str
+    status: str
     house: str
     perfumer: str | None
     year: int | None

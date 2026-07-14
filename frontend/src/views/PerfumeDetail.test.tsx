@@ -5,7 +5,7 @@ import PerfumeDetail from "./PerfumeDetail";
 import * as api from "../api";
 
 const perfume = {
-  id: 1, name: "Aventus", house: "Creed", perfumer: "Olivier Creed", year: 2010,
+  id: 1, name: "Aventus", status: "saved", house: "Creed", perfumer: "Olivier Creed", year: 2010,
   scent_families: ["Chypre", "Woody"], description: "Smoky.", my_impressions: "old note",
   formats: ["full"], source_urls: [], notes: [
     { id: 1, name: "bergamot", tier: "top" }, { id: 2, name: "birch", tier: "heart" }],
@@ -54,7 +54,20 @@ it("removes the perfume and navigates home when confirmed", async () => {
     </Routes>
   </MemoryRouter>);
   await waitFor(() => expect(screen.getByText("Aventus")).toBeInTheDocument());
-  fireEvent.click(screen.getByText(/remove from collection/i));
+  fireEvent.click(screen.getByRole("button", { name: "Remove" }));
   await waitFor(() => expect(del).toHaveBeenCalledWith(1));
   await waitFor(() => expect(screen.getByText("Collection Home")).toBeInTheDocument());
+});
+
+it("moves a saved perfume into the collection", async () => {
+  vi.spyOn(api, "getPerfume").mockResolvedValue(perfume as any);  // status: "saved"
+  const upd = vi.spyOn(api, "updatePerfume").mockResolvedValue({ ...perfume, status: "collection" } as any);
+  render(<MemoryRouter initialEntries={["/perfume/1"]}>
+    <Routes><Route path="/perfume/:id" element={<PerfumeDetail />} /></Routes>
+  </MemoryRouter>);
+  await waitFor(() => expect(screen.getByText("Aventus")).toBeInTheDocument());
+  // Saved item shows the badge + a "Move to collection" action.
+  expect(screen.getByText(/saved · not in collection/i)).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: /move to collection/i }));
+  await waitFor(() => expect(upd).toHaveBeenCalledWith(1, { status: "collection" }));
 });

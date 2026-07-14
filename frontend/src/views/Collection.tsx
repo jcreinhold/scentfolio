@@ -6,17 +6,31 @@ import PerfumeTable from "../components/PerfumeTable";
 import { useViewMode } from "../lib/useViewMode";
 import { FAMILIES } from "../lib/families";
 
-export default function Collection() {
+const COPY = {
+  collection: {
+    eyebrow: "The Collection", title: "Your fragrance wardrobe",
+    unit: "on the shelf", emptyTitle: "Your shelf is empty",
+    emptyBody: "Add your first scent to begin the archive.",
+  },
+  saved: {
+    eyebrow: "Saved", title: "Fragrances you're tracking",
+    unit: "saved · considering or familiar", emptyTitle: "Nothing saved yet",
+    emptyBody: "Save fragrances you're considering or familiar with from the Add page.",
+  },
+} as const;
+
+export default function Collection({ status = "collection" }: { status?: "collection" | "saved" }) {
   const [perfumes, setPerfumes] = useState<Perfume[]>([]);
   const [q, setQ] = useState("");
   const [family, setFamily] = useState("");
   const [fmt, setFmt] = useState("");
   const [view, setView] = useViewMode();
+  const copy = COPY[status];
 
   useEffect(() => {
-    listPerfumes({ q: q || undefined, family: family || undefined, fmt: fmt || undefined })
+    listPerfumes({ q: q || undefined, family: family || undefined, fmt: fmt || undefined, status })
       .then(setPerfumes);
-  }, [q, family, fmt]);
+  }, [q, family, fmt, status]);
 
   async function handleDelete(id: number) {
     await deletePerfume(id);
@@ -40,11 +54,11 @@ export default function Collection() {
     <div>
       <div className="collection-head">
         <div className="page-head">
-          <div className="eyebrow">The Collection</div>
-          <h2>Your fragrance wardrobe</h2>
+          <div className="eyebrow">{copy.eyebrow}</div>
+          <h2>{copy.title}</h2>
           <div className="page-sub">
             {perfumes.length} {perfumes.length === 1 ? "scent" : "scents"}
-            {filtering ? " matching your filters" : " on the shelf"}
+            {filtering ? " matching your filters" : ` ${copy.unit}`}
           </div>
         </div>
         <div role="tablist" aria-label="Collection view" className="view-toggle">
@@ -72,8 +86,8 @@ export default function Collection() {
 
       {perfumes.length === 0 ? (
         <div className="empty">
-          <div className="empty-title">{filtering ? "Nothing matches" : "Your shelf is empty"}</div>
-          <div>{filtering ? "Try loosening a filter." : "Add your first scent to begin the archive."}</div>
+          <div className="empty-title">{filtering ? "Nothing matches" : copy.emptyTitle}</div>
+          <div>{filtering ? "Try loosening a filter." : copy.emptyBody}</div>
         </div>
       ) : view === "table" ? (
         <PerfumeTable perfumes={perfumes} />

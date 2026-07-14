@@ -37,12 +37,13 @@ async function getJSON<T>(url: string): Promise<T> {
 }
 
 export async function listPerfumes(
-  filters: { q?: string; family?: string; fmt?: string } = {}
+  filters: { q?: string; family?: string; fmt?: string; status?: string } = {}
 ): Promise<Perfume[]> {
   const params = new URLSearchParams();
   if (filters.q) params.set("q", filters.q);
   if (filters.family) params.set("family", filters.family);
   if (filters.fmt) params.set("fmt", filters.fmt);
+  if (filters.status) params.set("status", filters.status);
   const qs = params.toString();
   return getJSON(`/api/perfumes${qs ? `?${qs}` : ""}`);
 }
@@ -68,7 +69,8 @@ export async function createPerfume(draft: Draft["perfume"]): Promise<Perfume> {
 }
 
 export async function updatePerfume(
-  id: number, patch: { my_impressions?: string; formats?: string[]; scent_families?: string[] }
+  id: number,
+  patch: { my_impressions?: string; formats?: string[]; scent_families?: string[]; status?: string }
 ): Promise<Perfume> {
   const r = await fetch(`/api/perfumes/${id}`, {
     method: "PATCH", headers: { "content-type": "application/json" },

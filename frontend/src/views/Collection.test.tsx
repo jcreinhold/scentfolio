@@ -32,6 +32,14 @@ it("removes a perfume from the grid when its ✕ is confirmed", async () => {
   await waitFor(() => expect(screen.queryByText("Sauvage")).not.toBeInTheDocument());
 });
 
+it("renders the Saved section and requests that status", async () => {
+  const list = vi.spyOn(api, "listPerfumes").mockResolvedValue([]);
+  render(<MemoryRouter><Collection status="saved" /></MemoryRouter>);
+  await waitFor(() => expect(screen.getByText(/fragrances you're tracking/i)).toBeInTheDocument());
+  expect(screen.getByText(/nothing saved yet/i)).toBeInTheDocument();
+  expect(list).toHaveBeenCalledWith(expect.objectContaining({ status: "saved" }));
+});
+
 it("switches to the sortable table view via the toggle", async () => {
   vi.spyOn(api, "listPerfumes").mockResolvedValue([sauvage as any]);
   render(<MemoryRouter><Collection /></MemoryRouter>);

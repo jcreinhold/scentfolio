@@ -6,8 +6,10 @@ from app.repository import _to_out, _normalize
 from app.schemas import PerfumeOut
 
 def search_perfumes(session: Session, q: str | None = None, family: str | None = None,
-                    fmt: str | None = None) -> list[PerfumeOut]:
+                    fmt: str | None = None, status: str | None = None) -> list[PerfumeOut]:
     stmt = select(Perfume)
+    if status:
+        stmt = stmt.where(Perfume.status == status)
     if q:
         term = _normalize(q)
         matching_ids = select(PerfumeNote.perfume_id).join(Note).where(
