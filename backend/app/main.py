@@ -1,4 +1,6 @@
-from fastapi import FastAPI, Depends, HTTPException
+import csv
+import io
+from fastapi import FastAPI, Depends, HTTPException, Response
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
@@ -76,6 +78,30 @@ def list_perfumes(q: str | None = None, family: str | None = None,
     if q or family or fmt:
         return queries.search_perfumes(session, q=q, family=family, fmt=fmt, status=status)
     return repo.list_perfumes(session, status=status)
+
+CSV_COLUMNS = ["name", "status", "house", "perfumer", "year", "families", "formats",
+               "top_notes", "heart_notes", "base_notes", "description", "impressions"]
+
+@app.get("/api/perfumes/export.csv")
+def export_perfumes_csv(status: str | None = None, session: Session = Depends(get_session)):
+    perfumes = repo.list_perfumes(session, status=status)
+    buf = io.StringIO()
+    writer = csv.writer(buf)
+    writer.writerow(CSV_COLUMNS)
+    for p in perfumes:
+        by_tier = {"top": [], "heart": [], "base": []}
+        for n in p.notes:
+            if n.tier in by_tier:
+                by_tier[n.tier].append(n.name)
+        writer.writerow([
+            p.name, p.status, p.house, p.perfumer or "", p.year or "",
+            "; ".join(p.scent_families), "; ".join(p.formats),
+            "; ".join(by_tier["top"]), "; ".join(by_tier["heart"]), "; ".join(by_tier["base"]),
+            p.description, p.my_impressions,
+        ])
+    filename = f"scentfolio-{status or 'all'}.csv"
+    return Response(buf.getvalue(), media_type="text/csv",
+                    headers={"Content-Disposition": f'attachment; filename="{filename}"'})
 
 @app.get("/api/perfumes/{perfume_id}")
 def get_perfume(perfume_id: int, session: Session = Depends(get_session)):

@@ -61,11 +61,18 @@ export default function Collection({ status = "collection" }: { status?: "collec
             {filtering ? " matching your filters" : ` ${copy.unit}`}
           </div>
         </div>
-        <div role="tablist" aria-label="Collection view" className="view-toggle">
-          <button role="tab" aria-selected={view === "cards"} disabled={view === "cards"}
-                  onClick={() => setView("cards")}>Cards</button>
-          <button role="tab" aria-selected={view === "table"} disabled={view === "table"}
-                  onClick={() => setView("table")}>Table</button>
+        <div className="head-actions">
+          {perfumes.length > 0 && (
+            <a className="export-link" href={`/api/perfumes/export.csv?status=${status}`}>
+              Export CSV
+            </a>
+          )}
+          <div role="tablist" aria-label="Collection view" className="view-toggle">
+            <button role="tab" aria-selected={view === "cards"} disabled={view === "cards"}
+                    onClick={() => setView("cards")}>Cards</button>
+            <button role="tab" aria-selected={view === "table"} disabled={view === "table"}
+                    onClick={() => setView("table")}>Table</button>
+          </div>
         </div>
       </div>
 

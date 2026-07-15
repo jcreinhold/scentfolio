@@ -33,6 +33,21 @@ def test_search_by_note(client):
     r = client.get("/api/perfumes", params={"q": "bergamot"})
     assert [p["name"] for p in r.json()] == ["Sauvage"]
 
+def test_export_csv(client):
+    _create(client, name="Owned", families=("Fresh", "Woody"))
+    client.post("/api/perfumes", json={"name": "Wanted", "house": "H", "status": "saved",
+                "notes": [{"name": "rose", "tier": "heart"}]})
+    r = client.get("/api/perfumes/export.csv")
+    assert r.status_code == 200
+    assert r.headers["content-type"].startswith("text/csv")
+    assert "attachment" in r.headers["content-disposition"]
+    lines = r.text.strip().splitlines()
+    assert lines[0] == "name,status,house,perfumer,year,families,formats,top_notes,heart_notes,base_notes,description,impressions"
+    assert any(row.startswith("Owned,collection,") and "Fresh; Woody" in row for row in lines[1:])
+    # status filter narrows the export
+    saved = client.get("/api/perfumes/export.csv", params={"status": "saved"}).text
+    assert "Wanted" in saved and "Owned" not in saved
+
 def test_status_filter_and_move(client):
     _create(client, name="Owned")
     client.post("/api/perfumes", json={"name": "Wanted", "house": "H", "status": "saved",

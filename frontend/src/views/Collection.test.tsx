@@ -32,6 +32,14 @@ it("removes a perfume from the grid when its ✕ is confirmed", async () => {
   await waitFor(() => expect(screen.queryByText("Sauvage")).not.toBeInTheDocument());
 });
 
+it("offers a CSV export link scoped to the section", async () => {
+  vi.spyOn(api, "listPerfumes").mockResolvedValue([sauvage as any]);
+  render(<MemoryRouter><Collection status="saved" /></MemoryRouter>);
+  await waitFor(() => expect(screen.getByText("Sauvage")).toBeInTheDocument());
+  expect(screen.getByRole("link", { name: /export csv/i }))
+    .toHaveAttribute("href", "/api/perfumes/export.csv?status=saved");
+});
+
 it("renders the Saved section and requests that status", async () => {
   const list = vi.spyOn(api, "listPerfumes").mockResolvedValue([]);
   render(<MemoryRouter><Collection status="saved" /></MemoryRouter>);
