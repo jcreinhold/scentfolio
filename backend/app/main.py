@@ -102,9 +102,7 @@ def list_perfumes(
     session: Session = Depends(get_session),
 ):
     if q or family or fmt:
-        return queries.search_perfumes(
-            session, q=q, family=family, fmt=fmt, status=status
-        )
+        return repo.search_perfumes(session, q=q, family=family, fmt=fmt, status=status)
     return repo.list_perfumes(session, status=status)
 
 

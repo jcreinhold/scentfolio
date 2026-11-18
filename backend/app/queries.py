@@ -2,36 +2,6 @@ from itertools import combinations
 from sqlalchemy import select, func
 from sqlalchemy.orm import Session
 from app.models import Perfume, Note, PerfumeNote
-from app.repository import _to_out, _normalize
-from app.schemas import PerfumeOut
-
-
-def search_perfumes(
-    session: Session,
-    q: str | None = None,
-    family: str | None = None,
-    fmt: str | None = None,
-    status: str | None = None,
-) -> list[PerfumeOut]:
-    stmt = select(Perfume)
-    if status:
-        stmt = stmt.where(Perfume.status == status)
-    if q:
-        term = _normalize(q)
-        matching_ids = (
-            select(PerfumeNote.perfume_id).join(Note).where(Note.name.like(f"%{term}%"))
-        )
-        stmt = stmt.where(
-            (func.lower(Perfume.name).like(f"%{term}%"))
-            | (Perfume.id.in_(matching_ids))
-        )
-    if family:
-        stmt = stmt.where(Perfume.scent_family.like(f"%{family}%"))
-    if fmt:
-        stmt = stmt.where(Perfume.formats.like(f"%{fmt}%"))
-    stmt = stmt.order_by(Perfume.name)
-    ps = session.execute(stmt).scalars().unique().all()
-    return [_to_out(p) for p in ps]
 
 
 def note_frequency_by_tier(session: Session) -> dict[str, list[tuple[str, int]]]:

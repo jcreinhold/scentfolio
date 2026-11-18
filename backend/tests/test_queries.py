@@ -31,25 +31,6 @@ def _seed(session):
     )
 
 
-def test_search_matches_name_or_note(session):
-    _seed(session)
-    by_name = queries.search_perfumes(session, q="aven")
-    assert [p.name for p in by_name] == ["Aventus"]
-    by_note = queries.search_perfumes(session, q="bergamot")
-    assert {p.name for p in by_note} == {"Sauvage", "Aventus"}
-
-
-def test_filter_by_family_and_format(session):
-    _seed(session)
-    fam = queries.search_perfumes(session, family="Chypre")
-    assert [p.name for p in fam] == ["Aventus"]
-    # "Woody" is a secondary tag on BOTH -> any-match returns both.
-    both = queries.search_perfumes(session, family="Woody")
-    assert {p.name for p in both} == {"Sauvage", "Aventus"}
-    fmt = queries.search_perfumes(session, fmt="full")
-    assert [p.name for p in fmt] == ["Sauvage"]
-
-
 def test_note_frequency_by_tier(session):
     _seed(session)
     by_tier = queries.note_frequency_by_tier(session)

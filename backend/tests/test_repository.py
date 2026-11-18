@@ -70,10 +70,44 @@ def test_list_perfumes_filters_by_status(session):
         "Owned"
     ]
     assert [p.name for p in repo.list_perfumes(session, status="saved")] == ["Wanted"]
-    assert {p.name for p in repo.list_perfumes(session)} == {
-        "Owned",
-        "Wanted",
-    }  # no filter -> all
+    assert [p.name for p in repo.list_perfumes(session)] == ["Wanted", "Owned"]
+
+
+def test_search_matches_name_or_note(session):
+    repo.create_perfume(session, _sample(name="Aventus", house="Creed"))
+    repo.create_perfume(session, _sample())
+
+    by_name = repo.search_perfumes(session, q=" AVEN ")
+    assert [p.name for p in by_name] == ["Aventus"]
+    by_note = repo.search_perfumes(session, q="bergamot")
+    assert [p.name for p in by_note] == ["Aventus", "Sauvage"]
+
+
+def test_search_filters_by_family_format_and_status(session):
+    repo.create_perfume(
+        session,
+        PerfumeCreate(
+            name="Sauvage", scent_families=["Fresh", "Woody"], formats=["full"]
+        ),
+    )
+    repo.create_perfume(
+        session,
+        PerfumeCreate(
+            name="Aventus",
+            scent_families=["Chypre", "Woody"],
+            formats=["sample"],
+            status="saved",
+        ),
+    )
+
+    chypre = repo.search_perfumes(session, family="Chypre")
+    assert [p.name for p in chypre] == ["Aventus"]
+    woody = repo.search_perfumes(session, family="Woody")
+    assert [p.name for p in woody] == ["Aventus", "Sauvage"]
+    full = repo.search_perfumes(session, fmt="full")
+    assert [p.name for p in full] == ["Sauvage"]
+    saved_woody = repo.search_perfumes(session, family="Woody", status="saved")
+    assert [p.name for p in saved_woody] == ["Aventus"]
 
 
 def test_update_moves_between_sections(session):

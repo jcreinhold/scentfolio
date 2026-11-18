@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { lookupPerfume, checkDuplicate, createPerfume, mapPool } from "../api";
+import { lookupPerfume, checkDuplicate, createPerfume } from "../api";
+import { mapPool } from "../lib/mapPool";
 import type { Draft } from "../types";
 
 const LOOKUP_CONCURRENCY = 4;
