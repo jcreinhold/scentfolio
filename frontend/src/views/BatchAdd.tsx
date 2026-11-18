@@ -208,8 +208,7 @@ export default function BatchAdd({
                       </span>
                       {r.duplicate && (
                         <span style={{ color: "#b45309" }}>
-                          {" "}
-                          · ⚠️ already in collection
+                          {" · ⚠️ already in collection"}
                         </span>
                       )}
                       {r.saveState === "saved" && (

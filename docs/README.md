@@ -5,6 +5,7 @@ Start with the [root README](../README.md) to install, run, and check Scentfolio
 | If you’re changing | Start here |
 | --- | --- |
 | Navigation or routes | [React routes](../frontend/src/App.tsx) |
+| Theme, layout, or page styles | [Stylesheet entry point](../frontend/src/styles.css), [style files](../frontend/src/styles/) |
 | Collection, saved list, or CSV export | [Collection view](../frontend/src/views/Collection.tsx), [perfume endpoints](../backend/app/main.py), [perfume storage](../backend/app/repository.py) |
 | Lookup or batch add | [Add view](../frontend/src/views/Add.tsx), [BatchAdd](../frontend/src/views/BatchAdd.tsx), [Anthropic integration](../backend/app/agent.py) |
 | Note glossary or enrichment | [Glossary](../frontend/src/views/Glossary.tsx), [note detail](../frontend/src/views/NoteDetail.tsx), [note endpoints](../backend/app/main.py) |
