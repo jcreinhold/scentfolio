@@ -15,7 +15,9 @@ export default function App() {
           <div className="brand">Scentfolio</div>
           <div className="brand-eyebrow">Personal Fragrance Archive</div>
           <nav>
-            <NavLink to="/" end>Collection</NavLink>
+            <NavLink to="/" end>
+              Collection
+            </NavLink>
             <NavLink to="/saved">Saved</NavLink>
             <NavLink to="/add">Add a Scent</NavLink>
             <NavLink to="/insights">Insights</NavLink>

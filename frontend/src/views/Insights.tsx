@@ -1,7 +1,21 @@
 import { useEffect, useState } from "react";
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
-import { insightNotes, insightFamilies, insightSimilar, reclassifyPerfumes,
-         type SimilarPair, type NotesByTier, type NoteCount } from "../api";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+} from "recharts";
+import {
+  insightNotes,
+  insightFamilies,
+  insightSimilar,
+  reclassifyPerfumes,
+  type SimilarPair,
+  type NotesByTier,
+  type NoteCount,
+} from "../api";
 
 const EMPTY_NOTES: NotesByTier = { top: [], heart: [], base: [] };
 const NOTE_TIERS: { key: keyof NotesByTier; label: string; fill: string }[] = [
@@ -12,12 +26,16 @@ const NOTE_TIERS: { key: keyof NotesByTier; label: string; fill: string }[] = [
 
 export default function Insights() {
   const [notes, setNotes] = useState<NotesByTier>(EMPTY_NOTES);
-  const [families, setFamilies] = useState<{ family: string; count: number }[]>([]);
+  const [families, setFamilies] = useState<{ family: string; count: number }[]>(
+    [],
+  );
   const [similar, setSimilar] = useState<SimilarPair[]>([]);
   const [reclassifying, setReclassifying] = useState(false);
   const [error, setError] = useState("");
 
-  function loadFamilies() { insightFamilies().then(setFamilies); }
+  function loadFamilies() {
+    insightFamilies().then(setFamilies);
+  }
   useEffect(() => {
     insightNotes().then(setNotes);
     loadFamilies();
@@ -25,7 +43,8 @@ export default function Insights() {
   }, []);
 
   async function reclassify() {
-    setError(""); setReclassifying(true);
+    setError("");
+    setReclassifying(true);
     try {
       await reclassifyPerfumes();
       loadFamilies();
@@ -42,7 +61,9 @@ export default function Insights() {
         <div className="page-head">
           <div className="eyebrow">Patterns</div>
           <h2>Insights</h2>
-          <div className="page-sub">What your collection reveals about your taste.</div>
+          <div className="page-sub">
+            What your collection reveals about your taste.
+          </div>
         </div>
         <button onClick={reclassify} disabled={reclassifying}>
           {reclassifying ? "Re-classifying…" : "Re-classify families"}
@@ -61,7 +82,10 @@ export default function Insights() {
       <ResponsiveContainer width="100%" height={240}>
         <BarChart data={families}>
           <XAxis dataKey="family" tick={{ fontSize: 12, fill: "#938975" }} />
-          <YAxis allowDecimals={false} tick={{ fontSize: 12, fill: "#938975" }} />
+          <YAxis
+            allowDecimals={false}
+            tick={{ fontSize: 12, fill: "#938975" }}
+          />
           <Tooltip cursor={{ fill: "rgba(95,107,72,0.08)" }} />
           <Bar dataKey="count" fill="#5f6b48" radius={[4, 4, 0, 0]} />
         </BarChart>
@@ -72,14 +96,26 @@ export default function Insights() {
         {similar.slice(0, 12).map((s, i) => (
           <li key={i} className="similar-pair">
             <div className="similar-head">
-              <span className="similar-names">{s.a} <span className="similar-x">↔</span> {s.b}</span>
-              <span className="similar-score">{Math.round(s.score * 100)}% match</span>
+              <span className="similar-names">
+                {s.a} <span className="similar-x">↔</span> {s.b}
+              </span>
+              <span className="similar-score">
+                {Math.round(s.score * 100)}% match
+              </span>
             </div>
             <div className="similar-breakdown">
-              {s.shared_families.length > 0 && <SharedGroup label="Families" items={s.shared_families} />}
-              {s.shared_top.length > 0 && <SharedGroup label="Top" items={s.shared_top} />}
-              {s.shared_heart.length > 0 && <SharedGroup label="Heart" items={s.shared_heart} />}
-              {s.shared_base.length > 0 && <SharedGroup label="Base" items={s.shared_base} />}
+              {s.shared_families.length > 0 && (
+                <SharedGroup label="Families" items={s.shared_families} />
+              )}
+              {s.shared_top.length > 0 && (
+                <SharedGroup label="Top" items={s.shared_top} />
+              )}
+              {s.shared_heart.length > 0 && (
+                <SharedGroup label="Heart" items={s.shared_heart} />
+              )}
+              {s.shared_base.length > 0 && (
+                <SharedGroup label="Base" items={s.shared_base} />
+              )}
             </div>
           </li>
         ))}
@@ -89,7 +125,8 @@ export default function Insights() {
 }
 
 function NoteTierChart({ data, fill }: { data: NoteCount[]; fill: string }) {
-  if (data.length === 0) return <p className="chart-empty">No notes in this tier yet.</p>;
+  if (data.length === 0)
+    return <p className="chart-empty">No notes in this tier yet.</p>;
   return (
     <ResponsiveContainer width="100%" height={220}>
       <BarChart data={data.slice(0, 10)}>
@@ -106,7 +143,11 @@ function SharedGroup({ label, items }: { label: string; items: string[] }) {
   return (
     <span className="similar-group">
       <span className="similar-group-label">{label}</span>
-      {items.map((it) => <span key={it} className="chip">{it}</span>)}
+      {items.map((it) => (
+        <span key={it} className="chip">
+          {it}
+        </span>
+      ))}
     </span>
   );
 }

@@ -13,7 +13,10 @@ export default function PerfumeDetail() {
   const [impressions, setImpressions] = useState("");
 
   useEffect(() => {
-    getPerfume(Number(id)).then((data) => { setP(data); setImpressions(data.my_impressions); });
+    getPerfume(Number(id)).then((data) => {
+      setP(data);
+      setImpressions(data.my_impressions);
+    });
   }, [id]);
 
   async function remove() {
@@ -49,24 +52,49 @@ export default function PerfumeDetail() {
   return (
     <div>
       <div className="page-head">
-        <div className="eyebrow">{p.status === "saved" ? "Saved · not in collection" : "From the archive"}</div>
+        <div className="eyebrow">
+          {p.status === "saved"
+            ? "Saved · not in collection"
+            : "From the archive"}
+        </div>
         <h2>{p.name}</h2>
-        <div className="card-sub">{p.house}{p.year ? ` · ${p.year}` : ""}
-          {p.perfumer ? ` · Perfumer: ${p.perfumer}` : ""}</div>
+        <div className="card-sub">
+          {p.house}
+          {p.year ? ` · ${p.year}` : ""}
+          {p.perfumer ? ` · Perfumer: ${p.perfumer}` : ""}
+        </div>
         <div className="family-tags">
           {p.scent_families.map((f) => (
             <span key={f} className="family-tag family-tag-editable">
               <span>{f}</span>
-              <button type="button" className="family-tag-remove"
-                      aria-label={`Remove ${f} family`}
-                      onClick={() => setFamilies(p.scent_families.filter((x) => x !== f))}>×</button>
+              <button
+                type="button"
+                className="family-tag-remove"
+                aria-label={`Remove ${f} family`}
+                onClick={() =>
+                  setFamilies(p.scent_families.filter((x) => x !== f))
+                }
+              >
+                ×
+              </button>
             </span>
           ))}
           {available.length > 0 && (
-            <select className="family-add" aria-label="Add fragrance family" value=""
-                    onChange={(e) => { if (e.target.value) setFamilies([...p.scent_families, e.target.value]); }}>
+            <select
+              className="family-add"
+              aria-label="Add fragrance family"
+              value=""
+              onChange={(e) => {
+                if (e.target.value)
+                  setFamilies([...p.scent_families, e.target.value]);
+              }}
+            >
               <option value="">+ Add family</option>
-              {available.map((f) => <option key={f} value={f}>{f}</option>)}
+              {available.map((f) => (
+                <option key={f} value={f}>
+                  {f}
+                </option>
+              ))}
             </select>
           )}
         </div>
@@ -77,12 +105,16 @@ export default function PerfumeDetail() {
         {TIERS.map((tier) => (
           <div key={tier} className={tier}>
             <b>{tier}:</b>{" "}
-            {p.notes.filter((n) => n.tier === tier).map((n, i, arr) => (
-              <span key={n.id}>
-                <Link to={`/note/${encodeURIComponent(n.name)}`}>{n.name}</Link>
-                {i < arr.length - 1 ? ", " : ""}
-              </span>
-            ))}
+            {p.notes
+              .filter((n) => n.tier === tier)
+              .map((n, i, arr) => (
+                <span key={n.id}>
+                  <Link to={`/note/${encodeURIComponent(n.name)}`}>
+                    {n.name}
+                  </Link>
+                  {i < arr.length - 1 ? ", " : ""}
+                </span>
+              ))}
           </div>
         ))}
       </div>
@@ -91,20 +123,47 @@ export default function PerfumeDetail() {
       <p>{p.description}</p>
 
       <div className="label">Formats</div>
-      <div className="card-notes">{p.formats.map((f) => <span key={f} className={`badge badge-${f}`}>{f}</span>)}</div>
+      <div className="card-notes">
+        {p.formats.map((f) => (
+          <span key={f} className={`badge badge-${f}`}>
+            {f}
+          </span>
+        ))}
+      </div>
 
-      <div className="label"><label htmlFor="imp">My impressions</label></div>
-      <textarea id="imp" aria-label="my impressions" className="search" value={impressions}
-                onChange={(e) => setImpressions(e.target.value)} />
-      <button onClick={() => updatePerfume(p.id, { my_impressions: impressions })}
-              style={{ marginTop: 8 }}>Save impressions</button>
+      <div className="label">
+        <label htmlFor="imp">My impressions</label>
+      </div>
+      <textarea
+        id="imp"
+        aria-label="my impressions"
+        className="search"
+        value={impressions}
+        onChange={(e) => setImpressions(e.target.value)}
+      />
+      <button
+        onClick={() => updatePerfume(p.id, { my_impressions: impressions })}
+        style={{ marginTop: 8 }}
+      >
+        Save impressions
+      </button>
 
-      <div style={{ marginTop: 32, borderTop: "1px solid #eee", paddingTop: 16,
-                    display: "flex", gap: 10, flexWrap: "wrap" }}>
+      <div
+        style={{
+          marginTop: 32,
+          borderTop: "1px solid #eee",
+          paddingTop: 16,
+          display: "flex",
+          gap: 10,
+          flexWrap: "wrap",
+        }}
+      >
         <button onClick={moveStatus}>
           {p.status === "saved" ? "Move to collection" : "Move to saved"}
         </button>
-        <button className="btn-danger" onClick={remove}>Remove</button>
+        <button className="btn-danger" onClick={remove}>
+          Remove
+        </button>
       </div>
     </div>
   );

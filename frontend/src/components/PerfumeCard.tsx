@@ -13,7 +13,11 @@ const FORMATS: { fmt: Format; label: string }[] = [
   { fmt: "sample", label: "Sample" },
 ];
 
-export default function PerfumeCard({ p, onDelete, onSetFormats }: {
+export default function PerfumeCard({
+  p,
+  onDelete,
+  onSetFormats,
+}: {
   p: Perfume;
   onDelete?: (id: number) => void;
   onSetFormats?: (id: number, formats: string[]) => void;
@@ -21,7 +25,8 @@ export default function PerfumeCard({ p, onDelete, onSetFormats }: {
   function handleDelete(e: React.MouseEvent) {
     e.preventDefault();
     e.stopPropagation();
-    if (window.confirm(`Remove ${p.name} from your collection?`)) onDelete?.(p.id);
+    if (window.confirm(`Remove ${p.name} from your collection?`))
+      onDelete?.(p.id);
   }
 
   function toggleFormat(e: React.MouseEvent, fmt: Format) {
@@ -37,15 +42,28 @@ export default function PerfumeCard({ p, onDelete, onSetFormats }: {
       <div className="card-top">
         <span className="card-name">{p.name}</span>
         {onDelete && (
-          <button className="card-remove" aria-label={`Remove ${p.name}`}
-                  title="Remove from collection" onClick={handleDelete}>✕</button>
+          <button
+            className="card-remove"
+            aria-label={`Remove ${p.name}`}
+            title="Remove from collection"
+            onClick={handleDelete}
+          >
+            ✕
+          </button>
         )}
       </div>
-      <div className="card-sub">{p.house}{p.year ? ` · ${p.year}` : ""}</div>
+      <div className="card-sub">
+        {p.house}
+        {p.year ? ` · ${p.year}` : ""}
+      </div>
       {p.perfumer && <div className="card-perfumer">By {p.perfumer}</div>}
       {p.scent_families.length > 0 && (
         <div className="family-tags">
-          {p.scent_families.map((f) => <span key={f} className="family-tag">{f}</span>)}
+          {p.scent_families.map((f) => (
+            <span key={f} className="family-tag">
+              {f}
+            </span>
+          ))}
         </div>
       )}
 
@@ -59,7 +77,9 @@ export default function PerfumeCard({ p, onDelete, onSetFormats }: {
               <span className={`tier-label tier-${tier}`}>{label}</span>
               <div className="card-notes">
                 {notes.slice(0, MAX_PER_TIER).map((n) => (
-                  <span key={n.id} className="chip">{n.name}</span>
+                  <span key={n.id} className="chip">
+                    {n.name}
+                  </span>
                 ))}
                 {extra > 0 && <span className="chip chip-more">+{extra}</span>}
               </div>
@@ -74,11 +94,14 @@ export default function PerfumeCard({ p, onDelete, onSetFormats }: {
           {FORMATS.map(({ fmt, label }) => {
             const on = p.formats.includes(fmt);
             return (
-              <button key={fmt} type="button"
-                      className={`fmt-toggle${on ? " on" : ""}`}
-                      aria-pressed={on}
-                      aria-label={`${on ? "Remove" : "Add"} ${label} size for ${p.name}`}
-                      onClick={(e) => toggleFormat(e, fmt)}>
+              <button
+                key={fmt}
+                type="button"
+                className={`fmt-toggle${on ? " on" : ""}`}
+                aria-pressed={on}
+                aria-label={`${on ? "Remove" : "Add"} ${label} size for ${p.name}`}
+                onClick={(e) => toggleFormat(e, fmt)}
+              >
                 {label}
               </button>
             );

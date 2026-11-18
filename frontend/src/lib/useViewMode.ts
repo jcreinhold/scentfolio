@@ -12,7 +12,10 @@ function isViewMode(v: unknown): v is ViewMode {
 /** Read the persisted view once, tolerating unavailable/blocked storage. */
 function readStored(): ViewMode {
   try {
-    const raw = typeof window !== "undefined" ? window.localStorage.getItem(STORAGE_KEY) : null;
+    const raw =
+      typeof window !== "undefined"
+        ? window.localStorage.getItem(STORAGE_KEY)
+        : null;
     return isViewMode(raw) ? raw : DEFAULT;
   } catch {
     return DEFAULT;

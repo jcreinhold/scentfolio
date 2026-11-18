@@ -1,6 +1,7 @@
 import type { Perfume } from "../types";
 
-export type SortKey = "name" | "house" | "perfumer" | "year" | "family" | "notes";
+export type SortKey =
+  "name" | "house" | "perfumer" | "year" | "family" | "notes";
 export type SortDir = "asc" | "desc";
 
 /** Whole-collection context some sorts need (e.g. per-perfumer counts). */
@@ -25,13 +26,19 @@ function countPerfumers(perfumes: Perfume[]): Map<string, number> {
  * The `perfumer` sort is by collection frequency — how many perfumes share that
  * perfumer — so the perfumers you own most of lead the list.
  */
-const ACCESSORS: Record<SortKey, (p: Perfume, ctx: SortContext) => string | number> = {
+const ACCESSORS: Record<
+  SortKey,
+  (p: Perfume, ctx: SortContext) => string | number
+> = {
   name: (p) => p.name.toLowerCase(),
   house: (p) => p.house.toLowerCase(),
   year: (p) => p.year ?? Number.NaN,
   family: (p) => p.scent_families.join(", ").toLowerCase(),
   notes: (p) => p.notes.length,
-  perfumer: (p, ctx) => (p.perfumer ? ctx.perfumerCounts.get(p.perfumer.toLowerCase()) ?? 0 : Number.NaN),
+  perfumer: (p, ctx) =>
+    p.perfumer
+      ? (ctx.perfumerCounts.get(p.perfumer.toLowerCase()) ?? 0)
+      : Number.NaN,
 };
 
 /** True when a value should always sink to the bottom (blank/unknown). */
@@ -51,7 +58,11 @@ function compare(a: string | number, b: string | number): number {
  * When sorting by `perfumer` (a count), ties are broken by perfumer name so all
  * perfumes from the same perfumer stay grouped together regardless of direction.
  */
-export function sortPerfumes(perfumes: Perfume[], key: SortKey, dir: SortDir): Perfume[] {
+export function sortPerfumes(
+  perfumes: Perfume[],
+  key: SortKey,
+  dir: SortDir,
+): Perfume[] {
   const ctx: SortContext = { perfumerCounts: countPerfumers(perfumes) };
   const read = ACCESSORS[key];
   const sign = dir === "asc" ? 1 : -1;
@@ -68,7 +79,10 @@ export function sortPerfumes(perfumes: Perfume[], key: SortKey, dir: SortDir): P
     if (primary !== 0) return primary;
     if (key === "perfumer") {
       // group same perfumer together (direction-independent)
-      return compare((pa.perfumer ?? "").toLowerCase(), (pb.perfumer ?? "").toLowerCase());
+      return compare(
+        (pa.perfumer ?? "").toLowerCase(),
+        (pb.perfumer ?? "").toLowerCase(),
+      );
     }
     return 0;
   });

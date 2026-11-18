@@ -7,14 +7,20 @@ type NoteData = Awaited<ReturnType<typeof getNote>>;
 export default function NoteDetail() {
   const { name } = useParams();
   const [data, setData] = useState<NoteData | null>(null);
-  useEffect(() => { if (name) getNote(name).then(setData); }, [name]);
+  useEffect(() => {
+    if (name) getNote(name).then(setData);
+  }, [name]);
   if (!data) return <div>Loading…</div>;
   return (
     <div>
       <h2>{data.name}</h2>
       <div className="card-sub">
         {data.family ?? "Unclassified"}
-        {data.origin && <span className={`note-origin origin-${data.origin}`}>{data.origin}</span>}
+        {data.origin && (
+          <span className={`note-origin origin-${data.origin}`}>
+            {data.origin}
+          </span>
+        )}
       </div>
       <div className="label">What it smells like</div>
       <p>{data.description || "No description yet."}</p>

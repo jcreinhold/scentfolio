@@ -8,6 +8,7 @@ Base.metadata.create_all(_engine)
 ensure_schema(_engine)  # additively add any columns missing from an older DB file
 _Session = make_sessionmaker(_engine)
 
+
 def get_session():
     with _Session() as s:
         yield s

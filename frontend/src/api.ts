@@ -8,7 +8,9 @@ import type { Perfume, Draft } from "./types";
 export type Settled<T> = { ok: true; value: T } | { ok: false; error: unknown };
 
 export async function mapPool<I, O>(
-  items: I[], limit: number, fn: (item: I, index: number) => Promise<O>,
+  items: I[],
+  limit: number,
+  fn: (item: I, index: number) => Promise<O>,
   onSettle?: (index: number, result: Settled<O>) => void,
 ): Promise<Settled<O>[]> {
   const results = new Array<Settled<O>>(items.length);
@@ -26,7 +28,9 @@ export async function mapPool<I, O>(
       onSettle?.(i, settled);
     }
   };
-  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
+  await Promise.all(
+    Array.from({ length: Math.min(limit, items.length) }, worker),
+  );
   return results;
 }
 
@@ -37,7 +41,7 @@ async function getJSON<T>(url: string): Promise<T> {
 }
 
 export async function listPerfumes(
-  filters: { q?: string; family?: string; fmt?: string; status?: string } = {}
+  filters: { q?: string; family?: string; fmt?: string; status?: string } = {},
 ): Promise<Perfume[]> {
   const params = new URLSearchParams();
   if (filters.q) params.set("q", filters.q);
@@ -48,11 +52,13 @@ export async function listPerfumes(
   return getJSON(`/api/perfumes${qs ? `?${qs}` : ""}`);
 }
 
-export const getPerfume = (id: number) => getJSON<Perfume>(`/api/perfumes/${id}`);
+export const getPerfume = (id: number) =>
+  getJSON<Perfume>(`/api/perfumes/${id}`);
 
 export async function lookupPerfume(name: string): Promise<Draft> {
   const r = await fetch("/api/lookup", {
-    method: "POST", headers: { "content-type": "application/json" },
+    method: "POST",
+    headers: { "content-type": "application/json" },
     body: JSON.stringify({ name }),
   });
   if (!r.ok) throw new Error((await r.json()).detail ?? "Lookup failed");
@@ -61,7 +67,8 @@ export async function lookupPerfume(name: string): Promise<Draft> {
 
 export async function createPerfume(draft: Draft["perfume"]): Promise<Perfume> {
   const r = await fetch("/api/perfumes", {
-    method: "POST", headers: { "content-type": "application/json" },
+    method: "POST",
+    headers: { "content-type": "application/json" },
     body: JSON.stringify(draft),
   });
   if (!r.ok) throw new Error("Create failed");
@@ -70,10 +77,16 @@ export async function createPerfume(draft: Draft["perfume"]): Promise<Perfume> {
 
 export async function updatePerfume(
   id: number,
-  patch: { my_impressions?: string; formats?: string[]; scent_families?: string[]; status?: string }
+  patch: {
+    my_impressions?: string;
+    formats?: string[];
+    scent_families?: string[];
+    status?: string;
+  },
 ): Promise<Perfume> {
   const r = await fetch(`/api/perfumes/${id}`, {
-    method: "PATCH", headers: { "content-type": "application/json" },
+    method: "PATCH",
+    headers: { "content-type": "application/json" },
     body: JSON.stringify(patch),
   });
   if (!r.ok) throw new Error("Update failed");
@@ -93,32 +106,63 @@ export async function reclassifyPerfumes(): Promise<{ updated: number }> {
 
 export const checkDuplicate = (name: string, house: string) =>
   getJSON<{ duplicate: boolean; id: number | null }>(
-    `/api/perfumes/check-duplicate?name=${encodeURIComponent(name)}&house=${encodeURIComponent(house)}`);
+    `/api/perfumes/check-duplicate?name=${encodeURIComponent(name)}&house=${encodeURIComponent(house)}`,
+  );
 
 export const getNote = (name: string) =>
-  getJSON<{ name: string; family: string | null; description: string;
-            origin: string; production: string; compounds: string;
-            sourcing: string; proprietary_to: string; history: string;
-            perfumes: { id: number; name: string; house: string }[] }>(
-    `/api/notes/${encodeURIComponent(name)}`);
+  getJSON<{
+    name: string;
+    family: string | null;
+    description: string;
+    origin: string;
+    production: string;
+    compounds: string;
+    sourcing: string;
+    proprietary_to: string;
+    history: string;
+    perfumes: { id: number; name: string; house: string }[];
+  }>(`/api/notes/${encodeURIComponent(name)}`);
 export const listNotes = () =>
-  getJSON<{ id: number; name: string; family: string | null;
-            description: string; origin: string; production: string;
-            compounds: string; sourcing: string; proprietary_to: string;
-            history: string }[]>(`/api/notes`);
+  getJSON<
+    {
+      id: number;
+      name: string;
+      family: string | null;
+      description: string;
+      origin: string;
+      production: string;
+      compounds: string;
+      sourcing: string;
+      proprietary_to: string;
+      history: string;
+    }[]
+  >(`/api/notes`);
 
 export async function enrichMissingNotes(): Promise<{ updated: number }> {
   const r = await fetch("/api/notes/enrich-missing", { method: "POST" });
   if (!r.ok) throw new Error("Failed to enrich notes");
   return r.json();
 }
-export interface NoteCount { note: string; count: number; }
-export interface NotesByTier { top: NoteCount[]; heart: NoteCount[]; base: NoteCount[]; }
-export const insightNotes = () => getJSON<NotesByTier>(`/api/insights/notes`);
-export const insightFamilies = () => getJSON<{ family: string; count: number }[]>(`/api/insights/families`);
-export interface SimilarPair {
-  a: string; b: string; score: number;
-  shared_families: string[]; shared_top: string[];
-  shared_heart: string[]; shared_base: string[];
+export interface NoteCount {
+  note: string;
+  count: number;
 }
-export const insightSimilar = () => getJSON<SimilarPair[]>(`/api/insights/similar`);
+export interface NotesByTier {
+  top: NoteCount[];
+  heart: NoteCount[];
+  base: NoteCount[];
+}
+export const insightNotes = () => getJSON<NotesByTier>(`/api/insights/notes`);
+export const insightFamilies = () =>
+  getJSON<{ family: string; count: number }[]>(`/api/insights/families`);
+export interface SimilarPair {
+  a: string;
+  b: string;
+  score: number;
+  shared_families: string[];
+  shared_top: string[];
+  shared_heart: string[];
+  shared_base: string[];
+}
+export const insightSimilar = () =>
+  getJSON<SimilarPair[]>(`/api/insights/similar`);

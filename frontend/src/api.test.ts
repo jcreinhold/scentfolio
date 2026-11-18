@@ -9,7 +9,9 @@ describe("mapPool", () => {
   it("preserves input order and reports each outcome", async () => {
     const out = await mapPool([1, 2, 3], 2, async (n) => n * 10);
     expect(out).toEqual([
-      { ok: true, value: 10 }, { ok: true, value: 20 }, { ok: true, value: 30 },
+      { ok: true, value: 10 },
+      { ok: true, value: 20 },
+      { ok: true, value: 30 },
     ]);
   });
 
@@ -24,9 +26,11 @@ describe("mapPool", () => {
   });
 
   it("never exceeds the concurrency limit", async () => {
-    let inFlight = 0, peak = 0;
+    let inFlight = 0,
+      peak = 0;
     await mapPool([1, 2, 3, 4, 5, 6], 2, async () => {
-      inFlight++; peak = Math.max(peak, inFlight);
+      inFlight++;
+      peak = Math.max(peak, inFlight);
       await new Promise((r) => setTimeout(r, 5));
       inFlight--;
     });
@@ -35,7 +39,14 @@ describe("mapPool", () => {
 
   it("fires onSettle per item", async () => {
     const seen: number[] = [];
-    await mapPool([1, 2, 3], 3, async (n) => n, (i) => { seen.push(i); });
+    await mapPool(
+      [1, 2, 3],
+      3,
+      async (n) => n,
+      (i) => {
+        seen.push(i);
+      },
+    );
     expect(seen.sort()).toEqual([0, 1, 2]);
   });
 });
@@ -49,7 +60,10 @@ it("listPerfumes builds query string from filters", async () => {
 });
 
 it("lookupPerfume posts the name", async () => {
-  (global.fetch as any).mockResolvedValue({ ok: true, json: async () => ({ confidence: "high" }) });
+  (global.fetch as any).mockResolvedValue({
+    ok: true,
+    json: async () => ({ confidence: "high" }),
+  });
   const d = await lookupPerfume("Aventus");
   expect(d.confidence).toBe("high");
 });

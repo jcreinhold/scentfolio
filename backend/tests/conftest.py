@@ -1,6 +1,7 @@
 import pytest
 from app.db import Base, make_engine, make_sessionmaker
 
+
 @pytest.fixture
 def session():
     engine = make_engine("sqlite:///:memory:")

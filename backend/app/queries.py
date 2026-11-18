@@ -5,18 +5,26 @@ from app.models import Perfume, Note, PerfumeNote
 from app.repository import _to_out, _normalize
 from app.schemas import PerfumeOut
 
-def search_perfumes(session: Session, q: str | None = None, family: str | None = None,
-                    fmt: str | None = None, status: str | None = None) -> list[PerfumeOut]:
+
+def search_perfumes(
+    session: Session,
+    q: str | None = None,
+    family: str | None = None,
+    fmt: str | None = None,
+    status: str | None = None,
+) -> list[PerfumeOut]:
     stmt = select(Perfume)
     if status:
         stmt = stmt.where(Perfume.status == status)
     if q:
         term = _normalize(q)
-        matching_ids = select(PerfumeNote.perfume_id).join(Note).where(
-            Note.name.like(f"%{term}%"))
+        matching_ids = (
+            select(PerfumeNote.perfume_id).join(Note).where(Note.name.like(f"%{term}%"))
+        )
         stmt = stmt.where(
-            (func.lower(Perfume.name).like(f"%{term}%")) |
-            (Perfume.id.in_(matching_ids)))
+            (func.lower(Perfume.name).like(f"%{term}%"))
+            | (Perfume.id.in_(matching_ids))
+        )
     if family:
         stmt = stmt.where(Perfume.scent_family.like(f"%{family}%"))
     if fmt:
@@ -25,12 +33,19 @@ def search_perfumes(session: Session, q: str | None = None, family: str | None =
     ps = session.execute(stmt).scalars().unique().all()
     return [_to_out(p) for p in ps]
 
+
 def note_frequency_by_tier(session: Session) -> dict[str, list[tuple[str, int]]]:
     """How often each note is used, split by the role (tier) it plays. Counting
     per-tier keeps near-universal base notes from swamping the overall picture."""
-    stmt = (select(Note.name, PerfumeNote.tier,
-                   func.count(func.distinct(PerfumeNote.perfume_id)))
-            .join(PerfumeNote).group_by(Note.name, PerfumeNote.tier))
+    stmt = (
+        select(
+            Note.name,
+            PerfumeNote.tier,
+            func.count(func.distinct(PerfumeNote.perfume_id)),
+        )
+        .join(PerfumeNote)
+        .group_by(Note.name, PerfumeNote.tier)
+    )
     by_tier: dict[str, list[tuple[str, int]]] = {"top": [], "heart": [], "base": []}
     for name, tier, count in session.execute(stmt).all():
         if tier in by_tier:
@@ -38,6 +53,7 @@ def note_frequency_by_tier(session: Session) -> dict[str, list[tuple[str, int]]]
     for tier in by_tier:
         by_tier[tier].sort(key=lambda nc: nc[1], reverse=True)
     return by_tier
+
 
 def family_breakdown(session: Session) -> list[tuple[str, int]]:
     """Count each family across perfumes. Families are stored comma-joined, so a
@@ -49,6 +65,7 @@ def family_breakdown(session: Session) -> list[tuple[str, int]]:
                 counts[fam] = counts.get(fam, 0) + 1
     return sorted(counts.items(), key=lambda x: x[1], reverse=True)
 
+
 def format_breakdown(session: Session) -> dict[str, int]:
     result = {"full": 0, "travel": 0, "sample": 0}
     for (formats,) in session.execute(select(Perfume.formats)).all():
@@ -57,11 +74,13 @@ def format_breakdown(session: Session) -> dict[str, int]:
                 result[f] += 1
     return result
 
+
 TIERS = ("top", "heart", "base")
 # Base notes are near-universal, so they carry the least weight; family overlap
 # carries meaningful signal about overall impression.
 TIER_WEIGHTS = {"top": 0.30, "heart": 0.30, "base": 0.15}
 FAMILY_WEIGHT = 0.25
+
 
 def _tiered_notes(p: Perfume) -> dict[str, set[str]]:
     tiers: dict[str, set[str]] = {t: set() for t in TIERS}
@@ -70,12 +89,15 @@ def _tiered_notes(p: Perfume) -> dict[str, set[str]]:
             tiers[pn.tier].add(pn.note.name)
     return tiers
 
+
 def _families(p: Perfume) -> set[str]:
     return {f for f in (p.scent_family or "").split(",") if f}
+
 
 def _jaccard(a: set[str], b: set[str]) -> float:
     union = a | b
     return len(a & b) / len(union) if union else 0.0
+
 
 def similar_pairs(session: Session, limit: int = 15) -> list[dict]:
     """Rank perfume pairs by a tier-aware, family-weighted similarity.
@@ -89,15 +111,20 @@ def similar_pairs(session: Session, limit: int = 15) -> list[dict]:
     for (pa, ta, fa), (pb, tb, fb) in combinations(prepared, 2):
         family_j = _jaccard(fa, fb)
         score = FAMILY_WEIGHT * family_j + sum(
-            TIER_WEIGHTS[t] * _jaccard(ta[t], tb[t]) for t in TIER_WEIGHTS)
+            TIER_WEIGHTS[t] * _jaccard(ta[t], tb[t]) for t in TIER_WEIGHTS
+        )
         if score <= 0:
             continue
-        pairs.append({
-            "a": pa.name, "b": pb.name, "score": round(score, 3),
-            "shared_families": sorted(fa & fb),
-            "shared_top": sorted(ta["top"] & tb["top"]),
-            "shared_heart": sorted(ta["heart"] & tb["heart"]),
-            "shared_base": sorted(ta["base"] & tb["base"]),
-        })
+        pairs.append(
+            {
+                "a": pa.name,
+                "b": pb.name,
+                "score": round(score, 3),
+                "shared_families": sorted(fa & fb),
+                "shared_top": sorted(ta["top"] & tb["top"]),
+                "shared_heart": sorted(ta["heart"] & tb["heart"]),
+                "shared_base": sorted(ta["base"] & tb["base"]),
+            }
+        )
     pairs.sort(key=lambda x: x["score"], reverse=True)
     return pairs[:limit]

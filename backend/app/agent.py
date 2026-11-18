@@ -5,17 +5,33 @@ from typing import Literal
 from pydantic import BaseModel, ValidationError
 from app.schemas import PerfumeCreate
 from dotenv import load_dotenv
+
 load_dotenv()
 
-VALID_FAMILIES = {"Citrus", "Floral", "Fruity", "Green", "Woody",
-                  "Fresh", "Aromatic", "Fougere", "Chypre", "Gourmand", "Leather", "Other"}
+VALID_FAMILIES = {
+    "Citrus",
+    "Floral",
+    "Fruity",
+    "Green",
+    "Woody",
+    "Fresh",
+    "Aromatic",
+    "Fougere",
+    "Chypre",
+    "Gourmand",
+    "Leather",
+    "Other",
+}
+
 
 class LookupError(Exception):
     pass
 
+
 class Draft(BaseModel):
     perfume: PerfumeCreate
     confidence: Literal["high", "medium", "low"] = "medium"
+
 
 SYSTEM_PROMPT = (
     "You are a fragrance research assistant. Given a perfume name, use web search to "
@@ -34,6 +50,7 @@ SYSTEM_PROMPT = (
     "(e.g. 'pink pepper' vs 'black pepper' only if the source clearly distinguishes them)."
 )
 
+
 def _isolate_json(raw_text: str) -> str:
     text = raw_text.strip()
     fence = re.search(r"```(?:json)?\s*(.*?)```", text, re.DOTALL)
@@ -41,8 +58,9 @@ def _isolate_json(raw_text: str) -> str:
         return fence.group(1).strip()
     start, end = text.find("{"), text.rfind("}")
     if start != -1 and end > start:
-        return text[start:end + 1]
+        return text[start : end + 1]
     return text
+
 
 def _clean_families(value) -> list[str]:
     """Keep only valid family names, de-duplicated, order preserved.
@@ -57,6 +75,7 @@ def _clean_families(value) -> list[str]:
             seen.append(fam)
     return seen
 
+
 def extract_draft(raw_text: str) -> Draft:
     """Parse the model's JSON text into a validated Draft."""
     try:
@@ -65,8 +84,9 @@ def extract_draft(raw_text: str) -> Draft:
         raise LookupError(f"Model did not return JSON: {raw_text[:200]}") from e
     payload["scent_families"] = _clean_families(payload.get("scent_families"))
     # Drop notes with invalid tiers rather than failing the whole lookup.
-    payload["notes"] = [n for n in payload.get("notes", [])
-                        if n.get("tier") in ("top", "heart", "base")]
+    payload["notes"] = [
+        n for n in payload.get("notes", []) if n.get("tier") in ("top", "heart", "base")
+    ]
     confidence = payload.pop("confidence", "medium")
     try:
         perfume = PerfumeCreate(**payload)
@@ -74,10 +94,12 @@ def extract_draft(raw_text: str) -> Draft:
         raise LookupError(str(e)) from e
     return Draft(perfume=perfume, confidence=confidence)
 
+
 def lookup(name: str, client=None) -> Draft:
     """Live lookup via Claude web search. `client` injectable for tests."""
     if client is None:
         from anthropic import Anthropic
+
         if not os.getenv("ANTHROPIC_API_KEY"):
             raise LookupError("ANTHROPIC_API_KEY not set")
         client = Anthropic()
@@ -90,6 +112,7 @@ def lookup(name: str, client=None) -> Draft:
     )
     text = "".join(b.text for b in resp.content if getattr(b, "type", None) == "text")
     return extract_draft(text)
+
 
 VALID_ORIGINS = {"natural", "synthetic", "both"}
 
@@ -124,9 +147,11 @@ NOTE_ENRICH_PROMPT = (
     "to its object."
 )
 
+
 def _clean_str(entry: dict, key: str) -> str:
     val = entry.get(key)
     return val.strip() if isinstance(val, str) else ""
+
 
 def enrich_notes(names: list[str], client=None) -> dict[str, dict]:
     """Generate {description, origin, production, compounds, sourcing,
@@ -136,6 +161,7 @@ def enrich_notes(names: list[str], client=None) -> dict[str, dict]:
         return {}
     if client is None:
         from anthropic import Anthropic
+
         if not os.getenv("ANTHROPIC_API_KEY"):
             raise LookupError("ANTHROPIC_API_KEY not set")
         client = Anthropic()
@@ -167,27 +193,34 @@ def enrich_notes(names: list[str], client=None) -> dict[str, dict]:
         }
     return out
 
+
 CLASSIFY_PROMPT = (
     "You are a fragrance classification expert. Given a perfume (name, house, and "
     "its notes), research its modern scent grouping — think in terms of its main "
     "accords the way Fragrantica and Michael Edwards' fragrance wheel do, not just "
     "the literal notes. Use web search to check its accords when helpful. Return "
-    "ONLY a JSON object (no prose) of the form {\"families\": [...]} with 1-3 "
+    'ONLY a JSON object (no prose) of the form {"families": [...]} with 1-3 '
     "family tags, ordered by dominance, each "
     f"one of: {sorted(VALID_FAMILIES)}. A perfume may span several families."
 )
 
-def classify_families(name: str, house: str, notes: list[str], client=None) -> list[str]:
+
+def classify_families(
+    name: str, house: str, notes: list[str], client=None
+) -> list[str]:
     """Research a perfume's modern scent families and return 1-3 valid tags.
     `client` injectable for tests."""
     if client is None:
         from anthropic import Anthropic
+
         if not os.getenv("ANTHROPIC_API_KEY"):
             raise LookupError("ANTHROPIC_API_KEY not set")
         client = Anthropic()
-    prompt = (f"Perfume: {name}\nHouse: {house or 'unknown'}\n"
-              f"Notes: {', '.join(notes) if notes else 'unknown'}\n"
-              "Classify into scent families.")
+    prompt = (
+        f"Perfume: {name}\nHouse: {house or 'unknown'}\n"
+        f"Notes: {', '.join(notes) if notes else 'unknown'}\n"
+        "Classify into scent families."
+    )
     resp = client.messages.create(
         model="claude-opus-4-8",
         max_tokens=800,
@@ -200,4 +233,6 @@ def classify_families(name: str, house: str, notes: list[str], client=None) -> l
         payload = json.loads(_isolate_json(text))
     except json.JSONDecodeError as e:
         raise LookupError(f"Model did not return JSON: {text[:200]}") from e
-    return _clean_families(payload.get("families") if isinstance(payload, dict) else payload)
+    return _clean_families(
+        payload.get("families") if isinstance(payload, dict) else payload
+    )

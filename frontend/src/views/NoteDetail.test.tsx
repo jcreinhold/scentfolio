@@ -6,20 +6,31 @@ import * as api from "../api";
 
 it("shows note info and perfumes containing it", async () => {
   vi.spyOn(api, "getNote").mockResolvedValue({
-    name: "bergamot", family: "Citrus", description: "Bright citrus.",
-    origin: "natural", production: "Cold-pressed from the peel.",
-    compounds: "", sourcing: "Calabria, Italy", proprietary_to: "",
+    name: "bergamot",
+    family: "Citrus",
+    description: "Bright citrus.",
+    origin: "natural",
+    production: "Cold-pressed from the peel.",
+    compounds: "",
+    sourcing: "Calabria, Italy",
+    proprietary_to: "",
     history: "Named after the town of Bergamo.",
     perfumes: [{ id: 1, name: "Sauvage", house: "Dior" }],
   });
-  render(<MemoryRouter initialEntries={["/note/bergamot"]}>
-    <Routes><Route path="/note/:name" element={<NoteDetail />} /></Routes>
-  </MemoryRouter>);
+  render(
+    <MemoryRouter initialEntries={["/note/bergamot"]}>
+      <Routes>
+        <Route path="/note/:name" element={<NoteDetail />} />
+      </Routes>
+    </MemoryRouter>,
+  );
   await waitFor(() => expect(screen.getByText("bergamot")).toBeInTheDocument());
   expect(screen.getByText("Bright citrus.")).toBeInTheDocument();
   expect(screen.getByText("natural")).toBeInTheDocument();
   expect(screen.getByText("Cold-pressed from the peel.")).toBeInTheDocument();
-  expect(screen.getByText("Calabria, Italy")).toBeInTheDocument();  // sourcing section
-  expect(screen.getByText("Named after the town of Bergamo.")).toBeInTheDocument();  // history
+  expect(screen.getByText("Calabria, Italy")).toBeInTheDocument(); // sourcing section
+  expect(
+    screen.getByText("Named after the town of Bergamo."),
+  ).toBeInTheDocument(); // history
   expect(screen.getByText(/Sauvage/)).toBeInTheDocument();
 });

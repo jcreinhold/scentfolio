@@ -7,23 +7,42 @@ import * as api from "../api";
 function draftFor(name: string, house = "House") {
   return {
     confidence: "high",
-    perfume: { name, house, perfumer: null, year: null, scent_families: ["Fresh"],
-      description: "", my_impressions: "", formats: [], source_urls: [], notes: [] },
+    perfume: {
+      name,
+      house,
+      perfumer: null,
+      year: null,
+      scent_families: ["Fresh"],
+      description: "",
+      my_impressions: "",
+      formats: [],
+      source_urls: [],
+      notes: [],
+    },
   } as any;
 }
 
 beforeEach(() => {
   vi.restoreAllMocks();
-  vi.spyOn(api, "checkDuplicate").mockResolvedValue({ duplicate: false, id: null });
+  vi.spyOn(api, "checkDuplicate").mockResolvedValue({
+    duplicate: false,
+    id: null,
+  });
 });
 
 it("looks up every pasted name (de-duplicated) and lists results", async () => {
-  const lookup = vi.spyOn(api, "lookupPerfume")
+  const lookup = vi
+    .spyOn(api, "lookupPerfume")
     .mockImplementation(async (n: string) => draftFor(n));
-  render(<MemoryRouter><BatchAdd /></MemoryRouter>);
+  render(
+    <MemoryRouter>
+      <BatchAdd />
+    </MemoryRouter>,
+  );
 
-  fireEvent.change(screen.getByPlaceholderText(/one perfume name per line/i),
-    { target: { value: "Aventus\nSauvage\nAventus\n\n" } });
+  fireEvent.change(screen.getByPlaceholderText(/one perfume name per line/i), {
+    target: { value: "Aventus\nSauvage\nAventus\n\n" },
+  });
   fireEvent.click(screen.getByText(/look up all/i));
 
   await waitFor(() => expect(screen.getByText("Aventus")).toBeInTheDocument());
@@ -33,12 +52,19 @@ it("looks up every pasted name (de-duplicated) and lists results", async () => {
 });
 
 it("saves only the kept rows and reports the count", async () => {
-  vi.spyOn(api, "lookupPerfume").mockImplementation(async (n: string) => draftFor(n));
+  vi.spyOn(api, "lookupPerfume").mockImplementation(async (n: string) =>
+    draftFor(n),
+  );
   const create = vi.spyOn(api, "createPerfume").mockResolvedValue({} as any);
-  render(<MemoryRouter><BatchAdd /></MemoryRouter>);
+  render(
+    <MemoryRouter>
+      <BatchAdd />
+    </MemoryRouter>,
+  );
 
-  fireEvent.change(screen.getByPlaceholderText(/one perfume name per line/i),
-    { target: { value: "Aventus\nSauvage" } });
+  fireEvent.change(screen.getByPlaceholderText(/one perfume name per line/i), {
+    target: { value: "Aventus\nSauvage" },
+  });
   fireEvent.click(screen.getByText(/look up all/i));
   await waitFor(() => expect(screen.getByText("Sauvage")).toBeInTheDocument());
 
@@ -46,7 +72,9 @@ it("saves only the kept rows and reports the count", async () => {
   fireEvent.click(screen.getAllByRole("checkbox")[0]);
   fireEvent.click(screen.getByText(/save 1 selected/i));
 
-  await waitFor(() => expect(screen.getByText(/added 1 perfume/i)).toBeInTheDocument());
+  await waitFor(() =>
+    expect(screen.getByText(/added 1 perfume/i)).toBeInTheDocument(),
+  );
   expect(create).toHaveBeenCalledTimes(1);
 });
 
@@ -56,26 +84,42 @@ it("shows failed lookups in error state and does not save them", async () => {
     return draftFor(n);
   });
   const create = vi.spyOn(api, "createPerfume").mockResolvedValue({} as any);
-  render(<MemoryRouter><BatchAdd /></MemoryRouter>);
+  render(
+    <MemoryRouter>
+      <BatchAdd />
+    </MemoryRouter>,
+  );
 
-  fireEvent.change(screen.getByPlaceholderText(/one perfume name per line/i),
-    { target: { value: "Aventus\nBogus" } });
+  fireEvent.change(screen.getByPlaceholderText(/one perfume name per line/i), {
+    target: { value: "Aventus\nBogus" },
+  });
   fireEvent.click(screen.getByText(/look up all/i));
 
-  await waitFor(() => expect(screen.getByText(/not found/i)).toBeInTheDocument());
+  await waitFor(() =>
+    expect(screen.getByText(/not found/i)).toBeInTheDocument(),
+  );
   // Only the successful row is selectable → "Save 1 selected".
   fireEvent.click(screen.getByText(/save 1 selected/i));
   await waitFor(() => expect(create).toHaveBeenCalledTimes(1));
 });
 
 it("flags duplicates found in the collection", async () => {
-  vi.spyOn(api, "lookupPerfume").mockImplementation(async (n: string) => draftFor(n));
+  vi.spyOn(api, "lookupPerfume").mockImplementation(async (n: string) =>
+    draftFor(n),
+  );
   vi.spyOn(api, "checkDuplicate").mockResolvedValue({ duplicate: true, id: 1 });
-  render(<MemoryRouter><BatchAdd /></MemoryRouter>);
+  render(
+    <MemoryRouter>
+      <BatchAdd />
+    </MemoryRouter>,
+  );
 
-  fireEvent.change(screen.getByPlaceholderText(/one perfume name per line/i),
-    { target: { value: "Aventus" } });
+  fireEvent.change(screen.getByPlaceholderText(/one perfume name per line/i), {
+    target: { value: "Aventus" },
+  });
   fireEvent.click(screen.getByText(/look up all/i));
 
-  await waitFor(() => expect(screen.getByText(/already in collection/i)).toBeInTheDocument());
+  await waitFor(() =>
+    expect(screen.getByText(/already in collection/i)).toBeInTheDocument(),
+  );
 });

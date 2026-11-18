@@ -8,18 +8,27 @@ import { FAMILIES } from "../lib/families";
 
 const COPY = {
   collection: {
-    eyebrow: "The Collection", title: "Your fragrance wardrobe",
-    unit: "on the shelf", emptyTitle: "Your shelf is empty",
+    eyebrow: "The Collection",
+    title: "Your fragrance wardrobe",
+    unit: "on the shelf",
+    emptyTitle: "Your shelf is empty",
     emptyBody: "Add your first scent to begin the archive.",
   },
   saved: {
-    eyebrow: "Saved", title: "Fragrances you're tracking",
-    unit: "saved · considering or familiar", emptyTitle: "Nothing saved yet",
-    emptyBody: "Save fragrances you're considering or familiar with from the Add page.",
+    eyebrow: "Saved",
+    title: "Fragrances you're tracking",
+    unit: "saved · considering or familiar",
+    emptyTitle: "Nothing saved yet",
+    emptyBody:
+      "Save fragrances you're considering or familiar with from the Add page.",
   },
 } as const;
 
-export default function Collection({ status = "collection" }: { status?: "collection" | "saved" }) {
+export default function Collection({
+  status = "collection",
+}: {
+  status?: "collection" | "saved";
+}) {
   const [perfumes, setPerfumes] = useState<Perfume[]>([]);
   const [q, setQ] = useState("");
   const [family, setFamily] = useState("");
@@ -28,8 +37,12 @@ export default function Collection({ status = "collection" }: { status?: "collec
   const copy = COPY[status];
 
   useEffect(() => {
-    listPerfumes({ q: q || undefined, family: family || undefined, fmt: fmt || undefined, status })
-      .then(setPerfumes);
+    listPerfumes({
+      q: q || undefined,
+      family: family || undefined,
+      fmt: fmt || undefined,
+      status,
+    }).then(setPerfumes);
   }, [q, family, fmt, status]);
 
   async function handleDelete(id: number) {
@@ -63,25 +76,52 @@ export default function Collection({ status = "collection" }: { status?: "collec
         </div>
         <div className="head-actions">
           {perfumes.length > 0 && (
-            <a className="export-link" href={`/api/perfumes/export.csv?status=${status}`}>
+            <a
+              className="export-link"
+              href={`/api/perfumes/export.csv?status=${status}`}
+            >
               Export CSV
             </a>
           )}
-          <div role="tablist" aria-label="Collection view" className="view-toggle">
-            <button role="tab" aria-selected={view === "cards"} disabled={view === "cards"}
-                    onClick={() => setView("cards")}>Cards</button>
-            <button role="tab" aria-selected={view === "table"} disabled={view === "table"}
-                    onClick={() => setView("table")}>Table</button>
+          <div
+            role="tablist"
+            aria-label="Collection view"
+            className="view-toggle"
+          >
+            <button
+              role="tab"
+              aria-selected={view === "cards"}
+              disabled={view === "cards"}
+              onClick={() => setView("cards")}
+            >
+              Cards
+            </button>
+            <button
+              role="tab"
+              aria-selected={view === "table"}
+              disabled={view === "table"}
+              onClick={() => setView("table")}
+            >
+              Table
+            </button>
           </div>
         </div>
       </div>
 
-      <input className="search" placeholder="Search names or notes…"
-             value={q} onChange={(e) => setQ(e.target.value)} />
+      <input
+        className="search"
+        placeholder="Search names or notes…"
+        value={q}
+        onChange={(e) => setQ(e.target.value)}
+      />
       <div className="filters">
         <select value={family} onChange={(e) => setFamily(e.target.value)}>
           <option value="">All families</option>
-          {FAMILIES.map((f) => <option key={f} value={f}>{f}</option>)}
+          {FAMILIES.map((f) => (
+            <option key={f} value={f}>
+              {f}
+            </option>
+          ))}
         </select>
         <select value={fmt} onChange={(e) => setFmt(e.target.value)}>
           <option value="">All formats</option>
@@ -93,7 +133,9 @@ export default function Collection({ status = "collection" }: { status?: "collec
 
       {perfumes.length === 0 ? (
         <div className="empty">
-          <div className="empty-title">{filtering ? "Nothing matches" : copy.emptyTitle}</div>
+          <div className="empty-title">
+            {filtering ? "Nothing matches" : copy.emptyTitle}
+          </div>
           <div>{filtering ? "Try loosening a filter." : copy.emptyBody}</div>
         </div>
       ) : view === "table" ? (
@@ -101,7 +143,12 @@ export default function Collection({ status = "collection" }: { status?: "collec
       ) : (
         <div className="grid">
           {perfumes.map((p) => (
-            <PerfumeCard key={p.id} p={p} onDelete={handleDelete} onSetFormats={handleSetFormats} />
+            <PerfumeCard
+              key={p.id}
+              p={p}
+              onDelete={handleDelete}
+              onSetFormats={handleSetFormats}
+            />
           ))}
         </div>
       )}
