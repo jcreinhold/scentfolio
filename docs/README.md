@@ -7,7 +7,7 @@ Start with the [root README](../README.md) to install, run, and check Scentfolio
 | Navigation or routes | [React routes](../frontend/src/App.tsx) |
 | Theme, layout, or page styles | [Stylesheet entry point](../frontend/src/styles.css), [style files](../frontend/src/styles/) |
 | Collection, saved list, or CSV export | [Collection view](../frontend/src/views/Collection.tsx), [perfume endpoints](../backend/app/main.py), [perfume storage](../backend/app/repository.py) |
-| Lookup or batch add | [Add view](../frontend/src/views/Add.tsx), [BatchAdd](../frontend/src/views/BatchAdd.tsx), [Anthropic integration](../backend/app/agent.py) |
+| Lookup or batch add | [Add view](../frontend/src/views/Add.tsx), [BatchAdd](../frontend/src/views/BatchAdd.tsx), [model prompts](../backend/app/agent.py), [provider transport](../backend/app/llm.py) |
 | Note glossary or enrichment | [Glossary](../frontend/src/views/Glossary.tsx), [note detail](../frontend/src/views/NoteDetail.tsx), [note endpoints](../backend/app/main.py) |
 | Insights or similarity | [Insights view](../frontend/src/views/Insights.tsx), [insight queries](../backend/app/queries.py) |
 | SQLite schema or startup | [ORM models](../backend/app/models.py), [schema upgrades](../backend/app/db.py), [session setup](../backend/app/deps.py) |

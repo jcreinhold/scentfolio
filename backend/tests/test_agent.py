@@ -1,30 +1,16 @@
 import json
 import pytest
-from app.agent import extract_draft, enrich_notes, classify_families, LookupError
+from app.agent import (
+    extract_draft,
+    enrich_notes,
+    classify_families,
+    lookup,
+    LookupError,
+)
 
 
-class _Block:
-    def __init__(self, text):
-        self.type = "text"
-        self.text = text
-
-
-class _Resp:
-    def __init__(self, text):
-        self.content = [_Block(text)]
-
-
-class _FakeClient:
-    """Mimics anthropic client: .messages.create(...) -> object with .content."""
-
-    def __init__(self, reply_text):
-        self._reply = reply_text
-        self.calls = []
-        self.messages = self
-
-    def create(self, **kwargs):
-        self.calls.append(kwargs)
-        return _Resp(self._reply)
+def _reply(monkeypatch, text):
+    monkeypatch.setattr("app.agent.complete", lambda *_args, **_options: (text, []))
 
 
 def _fake_response(payload: dict):
@@ -78,6 +64,26 @@ def test_extract_draft_rejects_non_json():
         extract_draft("I could not find this perfume.")
 
 
+@pytest.mark.parametrize("raw", ["```json\nnull\n```", '[{"name": "Aventus"}]'])
+def test_extract_draft_rejects_non_object_json(raw):
+    with pytest.raises(LookupError):
+        extract_draft(raw)
+
+
+def test_extract_draft_drops_malformed_families_and_notes():
+    draft = extract_draft(
+        _fake_response(
+            {
+                "name": "Aventus",
+                "scent_families": [{"name": "Woody"}, "Fruity"],
+                "notes": [None, {"name": "pineapple", "tier": "top"}],
+            }
+        )
+    )
+    assert draft.perfume.scent_families == ["Fruity"]
+    assert [note.name for note in draft.perfume.notes] == ["pineapple"]
+
+
 def test_extract_draft_handles_json_code_fence():
     raw = (
         "Here are the details I found:\n```json\n"
@@ -105,8 +111,52 @@ def test_extract_draft_handles_preamble_without_fence():
     assert draft.perfume.house == "Dior"
 
 
-def test_enrich_notes_returns_full_object_for_requested_names():
-    client = _FakeClient(
+def test_lookup_without_search_clears_sources_and_lowers_confidence(monkeypatch):
+    def complete(_system, _prompt, *, task, search=None, **_options):
+        assert task == "lookup"
+        assert search
+        return (
+            _fake_response(
+                {
+                    "name": "Aventus",
+                    "source_urls": ["https://example.test/aventus"],
+                    "confidence": "high",
+                }
+            ),
+            [],
+        )
+
+    monkeypatch.setattr("app.agent.complete", complete)
+    draft = lookup("Aventus")
+    assert draft.perfume.name == "Aventus"
+    assert draft.perfume.source_urls == []
+    assert draft.confidence == "low"
+
+
+def test_lookup_prefers_provider_citations_to_model_generated_urls(monkeypatch):
+    source = "https://brand.example/perfume"
+
+    def complete(*_args, **_options):
+        return (
+            _fake_response(
+                {
+                    "name": "Aventus",
+                    "source_urls": ["https://example.test/unverified"],
+                    "confidence": "high",
+                }
+            ),
+            [source],
+        )
+
+    monkeypatch.setattr("app.agent.complete", complete)
+    draft = lookup("Aventus")
+    assert draft.perfume.source_urls == [source]
+    assert draft.confidence == "high"
+
+
+def test_enrich_notes_returns_full_object_for_requested_names(monkeypatch):
+    _reply(
+        monkeypatch,
         json.dumps(
             {
                 "bergamot": {
@@ -128,9 +178,9 @@ def test_enrich_notes_returns_full_object_for_requested_names():
                 },
                 "extra": {"description": "x", "origin": "natural", "production": "y"},
             }
-        )
+        ),
     )
-    out = enrich_notes(["bergamot", "akigalawood"], client=client)
+    out = enrich_notes(["bergamot", "akigalawood"])
     assert set(out) == {"bergamot", "akigalawood"}  # only requested names kept
     assert out["bergamot"]["sourcing"] == "Calabria, Italy"
     assert out["bergamot"]["compounds"] == ""
@@ -139,14 +189,33 @@ def test_enrich_notes_returns_full_object_for_requested_names():
     assert out["akigalawood"]["history"] == "Introduced by Givaudan in 2015."
 
 
-def test_enrich_notes_empty_input_makes_no_call():
-    client = _FakeClient("{}")
-    assert enrich_notes([], client=client) == {}
-    assert client.calls == []
+def test_enrich_notes_empty_input_makes_no_call(monkeypatch):
+    def complete(*_args, **_options):
+        pytest.fail("An empty batch should skip the model call")
+
+    monkeypatch.setattr("app.agent.complete", complete)
+    assert enrich_notes([]) == {}
 
 
-def test_enrich_notes_coerces_invalid_origin_to_blank():
-    client = _FakeClient(
+def test_enrich_notes_omits_search_and_cleans_non_string_origin(monkeypatch):
+    def complete(_system, prompt, *, task, search=None, **_options):
+        assert task == "enrich"
+        assert search is None
+        assert json.loads(prompt) == ["rose"]
+        return (
+            _fake_response({"rose": {"description": "Floral.", "origin": ["natural"]}}),
+            [],
+        )
+
+    monkeypatch.setattr("app.agent.complete", complete)
+    note = enrich_notes(["rose"])["rose"]
+    assert note["description"] == "Floral."
+    assert note["origin"] == ""
+
+
+def test_enrich_notes_coerces_invalid_origin_to_blank(monkeypatch):
+    _reply(
+        monkeypatch,
         json.dumps(
             {
                 "rose": {
@@ -155,15 +224,16 @@ def test_enrich_notes_coerces_invalid_origin_to_blank():
                     "production": "steam-distilled",
                 }
             }
-        )
+        ),
     )
-    out = enrich_notes(["rose"], client=client)
+    out = enrich_notes(["rose"])
     assert out["rose"]["origin"] == ""  # invalid origin dropped
     assert out["rose"]["production"] == "steam-distilled"
 
 
-def test_enrich_notes_handles_code_fence():
-    client = _FakeClient(
+def test_enrich_notes_handles_code_fence(monkeypatch):
+    _reply(
+        monkeypatch,
         "```json\n"
         + json.dumps(
             {
@@ -174,44 +244,58 @@ def test_enrich_notes_handles_code_fence():
                 }
             }
         )
-        + "\n```"
+        + "\n```",
     )
-    assert enrich_notes(["rose"], client=client)["rose"]["origin"] == "natural"
+    assert enrich_notes(["rose"])["rose"]["origin"] == "natural"
 
 
-def test_enrich_notes_rejects_non_json():
+def test_enrich_notes_rejects_non_json(monkeypatch):
+    _reply(monkeypatch, "I cannot help with that.")
     with pytest.raises(LookupError):
-        enrich_notes(["rose"], client=_FakeClient("I cannot help with that."))
+        enrich_notes(["rose"])
 
 
-def test_classify_families_returns_valid_tags():
-    client = _FakeClient(json.dumps({"families": ["Gourmand", "Woody"]}))
-    out = classify_families("Milk", "Snif", ["milk", "sandalwood"], client=client)
+def test_classify_families_returns_valid_tags(monkeypatch):
+    _reply(monkeypatch, json.dumps({"families": ["Gourmand", "Woody"]}))
+    out = classify_families("Milk", "Snif", ["milk", "sandalwood"])
     assert out == ["Gourmand", "Woody"]
 
 
-def test_classify_families_drops_invalid_and_dedupes():
-    client = _FakeClient(
-        json.dumps({"families": ["Floral", "Nonsense", "Floral", "Fruity"]})
+def test_classify_families_requests_search(monkeypatch):
+    def complete(_system, _prompt, *, task, search=None, **_options):
+        assert task == "classify"
+        assert search
+        return _fake_response({"families": ["Gourmand"]}), []
+
+    monkeypatch.setattr("app.agent.complete", complete)
+    assert classify_families("Milk", "Snif", []) == ["Gourmand"]
+
+
+def test_classify_families_drops_invalid_and_dedupes(monkeypatch):
+    _reply(
+        monkeypatch,
+        json.dumps({"families": ["Floral", "Nonsense", "Floral", "Fruity"]}),
     )
-    assert classify_families("Pony Boy", "Snif", [], client=client) == [
+    assert classify_families("Pony Boy", "Snif", []) == [
         "Floral",
         "Fruity",
     ]
 
 
-def test_classify_families_handles_preamble_and_fence():
-    client = _FakeClient(
+def test_classify_families_handles_preamble_and_fence(monkeypatch):
+    _reply(
+        monkeypatch,
         "Based on its accords:\n```json\n"
         + json.dumps({"families": ["Green", "Gourmand"]})
-        + "\n```"
+        + "\n```",
     )
-    assert classify_families("Dandelion Butter", "Snif", [], client=client) == [
+    assert classify_families("Dandelion Butter", "Snif", []) == [
         "Green",
         "Gourmand",
     ]
 
 
-def test_classify_families_rejects_non_json():
+def test_classify_families_rejects_non_json(monkeypatch):
+    _reply(monkeypatch, "no idea")
     with pytest.raises(LookupError):
-        classify_families("X", "Y", [], client=_FakeClient("no idea"))
+        classify_families("X", "Y", [])
