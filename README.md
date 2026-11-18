@@ -1,42 +1,64 @@
-# Scentfolio — Perfume Tracker
+# Scentfolio
 
-Local-first app to catalogue perfumes with AI-assisted note lookup. Type a perfume
-name and a Claude web-search agent pulls in the top/heart/base notes, perfumer, house,
-year, scent family, and a description. Browse your collection, search by note, explore
-insights, and learn scents through a cross-linked note glossary.
+Scentfolio is a local-first fragrance tracker. Keep an owned collection and a
+saved list, export either as CSV, and explore notes and similarities. AI-assisted
+lookup fills in a draft you can review and edit before saving.
 
-## Prerequisites
-- Python 3.13 with [`uv`](https://github.com/astral-sh/uv) installed
-- Node.js 18+ and npm
-- An Anthropic API key (for perfume lookups)
+## Run locally
 
-## Run
-1. **Backend:** copy `backend/.env.example` to `backend/.env` and add your `ANTHROPIC_API_KEY`, then:
-   ```bash
-   ./backend/run.sh
-   ```
-   Serves on http://localhost:8000. (The venv already exists at `backend/.venv`; if you need to recreate it: `cd backend && uv venv --python 3.13 .venv && source .venv/bin/activate && uv pip install -r requirements.txt`.)
-2. **Frontend:**
-   ```bash
-   cd frontend && npm run dev
-   ```
-   Serves on http://localhost:5173 and proxies `/api` to the backend.
-3. Open http://localhost:5173.
+Install [uv](https://docs.astral.sh/uv/getting-started/installation/) and Node.js
+24 with npm. If you use nvm, run `nvm install` from the repo root. uv uses the
+Python 3.13 version specified in `backend/.python-version`.
 
-## Test
-- **Backend:** `cd backend && source .venv/bin/activate && pytest`
-- **Frontend:** `cd frontend && npx vitest run`
+In one terminal, from the repo root:
 
-## Architecture
-- `backend/` — FastAPI + SQLAlchemy + SQLite. Notes are normalized into their own
-  table so "which perfumes have this note" and the glossary are direct joins. The
-  lookup agent (`app/agent.py`) calls Claude with the built-in web search tool and
-  returns a validated draft that you confirm before saving.
-- `frontend/` — React + Vite + TypeScript. Three areas: Collection (search by name or
-  note, filter by family/format), Insights (note frequency, family grouping,
-  similarity — charts via Recharts), and the Note Glossary.
+```sh
+(cd backend && uv sync --locked)
+./backend/run.sh
+```
 
-## Notes
-- Data lives in `backend/scentfolio.db` (SQLite). The schema is Postgres-portable for
-  a future hosted deployment.
-- Nothing is saved without your confirmation; the lookup draft is fully editable.
+In a second terminal, from the repo root:
+
+```sh
+cd frontend
+npm ci
+npm run dev
+```
+
+Open [Scentfolio](http://localhost:5173). Vite sends `/api` requests to
+[FastAPI on port 8000](http://localhost:8000/docs).
+
+### Local data and AI features
+
+The backend stores your data in `backend/scentfolio.db`. Set
+`SCENTFOLIO_DB_URL` in the shell before starting the backend to use a different
+database, such as a scratch SQLite file.
+
+For AI lookup, note enrichment, and family reclassification, create
+`backend/.env` from `backend/.env.example`, set `ANTHROPIC_API_KEY`, and restart
+the backend. The app can browse and export your data without a key.
+
+## Check changes
+
+From `backend/`:
+
+```sh
+uv run --locked ruff format --check .
+uv run --locked ruff check .
+SCENTFOLIO_DB_URL=sqlite:///:memory: uv run --locked pytest
+```
+
+From `frontend/`:
+
+```sh
+npm run format:check
+npm run lint
+npm test
+npm run build
+```
+
+Run `uv run --locked ruff format .` in `backend/` and `npm run format` in
+`frontend/` to apply formatting. The test suites exercise AI-backed flows with
+mocks and run without an API key.
+
+See the [repo guide](docs/README.md) for where to make changes.

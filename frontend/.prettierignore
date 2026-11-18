@@ -1,0 +1,6 @@
+dist/
+dist-ssr/
+package-lock.json
+public/
+src/assets/
+*.md

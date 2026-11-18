@@ -1,6 +1,9 @@
 .superpowers/
+.DS_Store
 __pycache__/
 *.pyc
+.pytest_cache/
+.ruff_cache/
 .env
 node_modules/
 dist/
