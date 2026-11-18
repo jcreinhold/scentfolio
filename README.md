@@ -7,8 +7,10 @@ lookup fills in a draft you can review and edit before saving.
 ## Run locally
 
 Install [uv](https://docs.astral.sh/uv/getting-started/installation/) and Node.js
-24 with npm. If you use nvm, run `nvm install` from the repo root. uv uses the
-Python 3.13 version specified in `backend/.python-version`.
+24 with npm. If you use nvm, run `nvm install` from the repo root. The backend
+supports Python 3.14 and 3.15. uv defaults to Python 3.15.2, pinned in
+`backend/.python-version`. To use Python 3.14, run `export UV_PYTHON=3.14` in the
+backend terminal before setup and startup.
 
 In one terminal, from the repo root:
 
@@ -28,11 +30,20 @@ npm run dev
 Open [Scentfolio](http://localhost:5173). Vite sends `/api` requests to
 [FastAPI on port 8000](http://localhost:8000/docs).
 
-### Local data and AI features
+### Keep an existing collection
 
-The backend stores your data in `backend/scentfolio.db`. Set
-`SCENTFOLIO_DB_URL` in the shell before starting the backend to use a different
-database, such as a scratch SQLite file.
+When updating an existing checkout, leave `backend/scentfolio.db` in place and
+start the app as usual. Startup upgrades the SQLite schema in place. Your
+scents, notes, and impressions carry over. Entries created before the Saved
+section appear in Collection.
+
+If your database lives elsewhere, run the launcher with its existing file path:
+
+```sh
+SCENTFOLIO_DB_URL="sqlite:////absolute/path/to/scentfolio.db" ./backend/run.sh
+```
+
+### Enable AI features
 
 For AI lookup, note enrichment, and family reclassification, create
 `backend/.env` from `backend/.env.example`, set `ANTHROPIC_API_KEY`, and restart
