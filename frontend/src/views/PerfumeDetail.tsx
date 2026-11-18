@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { getPerfume, updatePerfume, deletePerfume } from "../api";
+import SourceLinks from "../components/SourceLinks";
 import type { Perfume, Tier } from "../types";
 import { FAMILIES } from "../lib/families";
 
@@ -121,6 +122,7 @@ export default function PerfumeDetail() {
 
       <div className="label">Description</div>
       <p>{p.description}</p>
+      <SourceLinks urls={p.source_urls} />
 
       <div className="label">Formats</div>
       <div className="card-notes">

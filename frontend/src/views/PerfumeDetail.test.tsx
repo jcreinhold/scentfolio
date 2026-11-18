@@ -38,6 +38,9 @@ it("shows pyramid and saves impressions", async () => {
   expect(screen.getByText("bergamot")).toBeInTheDocument();
   expect(screen.getByText("Chypre")).toBeInTheDocument();
   expect(screen.getByText("Woody")).toBeInTheDocument();
+  expect(
+    screen.queryByRole("group", { name: "Sources" }),
+  ).not.toBeInTheDocument();
   fireEvent.change(screen.getByLabelText(/impressions/i), {
     target: { value: "new" },
   });
@@ -97,7 +100,11 @@ it("removes the perfume and navigates home when confirmed", async () => {
 });
 
 it("moves a saved perfume into the collection", async () => {
-  vi.spyOn(api, "getPerfume").mockResolvedValue(perfume as any); // status: "saved"
+  const sourceUrl = "http://example.test/archive/aventus";
+  vi.spyOn(api, "getPerfume").mockResolvedValue({
+    ...perfume,
+    source_urls: [sourceUrl],
+  } as any);
   const upd = vi
     .spyOn(api, "updatePerfume")
     .mockResolvedValue({ ...perfume, status: "collection" } as any);
@@ -111,6 +118,10 @@ it("moves a saved perfume into the collection", async () => {
   await waitFor(() => expect(screen.getByText("Aventus")).toBeInTheDocument());
   // Saved item shows the badge + a "Move to collection" action.
   expect(screen.getByText(/saved · not in collection/i)).toBeInTheDocument();
+  expect(screen.getByRole("link", { name: sourceUrl })).toHaveAttribute(
+    "href",
+    sourceUrl,
+  );
   fireEvent.click(screen.getByRole("button", { name: /move to collection/i }));
   await waitFor(() =>
     expect(upd).toHaveBeenCalledWith(1, { status: "collection" }),

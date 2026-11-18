@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { lookupPerfume, createPerfume, checkDuplicate } from "../api";
+import SourceLinks from "../components/SourceLinks";
 import type { Draft, Format } from "../types";
 import BatchAdd from "./BatchAdd";
 
@@ -182,13 +183,7 @@ export default function Add() {
                   </span>
                 ))}
               </div>
-              {draft.perfume.source_urls.map((u) => (
-                <div key={u}>
-                  <a href={u} target="_blank" rel="noreferrer">
-                    {u}
-                  </a>
-                </div>
-              ))}
+              <SourceLinks urls={draft.perfume.source_urls} />
               <button onClick={save} style={{ marginTop: 12 }}>
                 {dest === "saved" ? "Save to Saved" : "Save to collection"}
               </button>

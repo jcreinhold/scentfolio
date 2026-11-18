@@ -5,6 +5,7 @@ import Add from "./Add";
 import * as api from "../api";
 
 it("looks up a name and shows the draft for confirmation", async () => {
+  const sourceUrl = "https://example.test/aventus";
   vi.spyOn(api, "lookupPerfume").mockResolvedValue({
     confidence: "high",
     perfume: {
@@ -16,7 +17,12 @@ it("looks up a name and shows the draft for confirmation", async () => {
       description: "Smoky.",
       my_impressions: "",
       formats: [],
-      source_urls: ["https://x"],
+      source_urls: [
+        sourceUrl,
+        "file:///aventus",
+        "no-url",
+        "HTTPS://EXAMPLE.TEST/aventus",
+      ],
       notes: [{ id: 0, name: "bergamot", tier: "top" }],
     },
   } as any);
@@ -40,6 +46,10 @@ it("looks up a name and shows the draft for confirmation", async () => {
   );
   expect(screen.getByText(/high confidence/i)).toBeInTheDocument();
   expect(screen.getByText("bergamot")).toBeInTheDocument();
+  const source = screen.getByRole("link", { name: sourceUrl });
+  expect(source).toHaveAttribute("href", sourceUrl);
+  expect(source).toHaveAttribute("target", "_blank");
+  expect(screen.getAllByRole("link")).toHaveLength(1);
 });
 
 it("warns when the looked-up perfume is already in the collection", async () => {
@@ -71,6 +81,9 @@ it("warns when the looked-up perfume is already in the collection", async () => 
   await waitFor(() =>
     expect(screen.getByText(/already have a perfume/i)).toBeInTheDocument(),
   );
+  expect(
+    screen.queryByRole("group", { name: "Sources" }),
+  ).not.toBeInTheDocument();
 });
 
 it("saves to the Saved section when that destination is chosen", async () => {

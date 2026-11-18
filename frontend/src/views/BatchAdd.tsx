@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { lookupPerfume, checkDuplicate, createPerfume } from "../api";
+import SourceLinks from "../components/SourceLinks";
 import { mapPool } from "../lib/mapPool";
 import type { Draft } from "../types";
 
@@ -187,48 +188,51 @@ export default function BatchAdd({
                   </span>
                 )}
                 {r.status === "success" && r.draft && (
-                  <label
-                    style={{
-                      display: "flex",
-                      gap: 8,
-                      alignItems: "baseline",
-                      cursor: "pointer",
-                    }}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={r.kept}
-                      disabled={r.saveState === "saved"}
-                      onChange={(e) => update(i, { kept: e.target.checked })}
-                    />
-                    <span style={{ flex: 1 }}>
-                      <b>{r.draft.perfume.name}</b> · {r.draft.perfume.house}{" "}
-                      <span className="chip">
-                        {r.draft.confidence} confidence
-                      </span>
-                      {r.duplicate && (
-                        <span style={{ color: "#b45309" }}>
-                          {" · ⚠️ already in collection"}
+                  <>
+                    <label
+                      style={{
+                        display: "flex",
+                        gap: 8,
+                        alignItems: "baseline",
+                        cursor: "pointer",
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={r.kept}
+                        disabled={r.saveState === "saved"}
+                        onChange={(e) => update(i, { kept: e.target.checked })}
+                      />
+                      <span style={{ flex: 1 }}>
+                        <b>{r.draft.perfume.name}</b> · {r.draft.perfume.house}{" "}
+                        <span className="chip">
+                          {r.draft.confidence} confidence
                         </span>
-                      )}
-                      {r.saveState === "saved" && (
-                        <span style={{ color: "#15803d" }}> · ✓ saved</span>
-                      )}
-                      {r.saveState === "error" && (
-                        <span style={{ color: "crimson" }}>
-                          {" "}
-                          · save failed: {r.saveError}
-                        </span>
-                      )}
-                      <div className="card-notes">
-                        {r.draft.perfume.notes.slice(0, 5).map((n, j) => (
-                          <span key={j} className="chip">
-                            {n.name}
+                        {r.duplicate && (
+                          <span style={{ color: "#b45309" }}>
+                            {" · ⚠️ already in collection"}
                           </span>
-                        ))}
-                      </div>
-                    </span>
-                  </label>
+                        )}
+                        {r.saveState === "saved" && (
+                          <span style={{ color: "#15803d" }}> · ✓ saved</span>
+                        )}
+                        {r.saveState === "error" && (
+                          <span style={{ color: "crimson" }}>
+                            {" "}
+                            · save failed: {r.saveError}
+                          </span>
+                        )}
+                        <div className="card-notes">
+                          {r.draft.perfume.notes.slice(0, 5).map((n, j) => (
+                            <span key={j} className="chip">
+                              {n.name}
+                            </span>
+                          ))}
+                        </div>
+                      </span>
+                    </label>
+                    <SourceLinks urls={r.draft.perfume.source_urls} />
+                  </>
                 )}
               </div>
             ))}

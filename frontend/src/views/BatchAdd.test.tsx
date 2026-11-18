@@ -4,19 +4,19 @@ import { vi, it, expect, beforeEach } from "vitest";
 import BatchAdd from "./BatchAdd";
 import * as api from "../api";
 
-function draftFor(name: string, house = "House") {
+function draftFor(name: string, sourceUrls: string[] = []) {
   return {
     confidence: "high",
     perfume: {
       name,
-      house,
+      house: "House",
       perfumer: null,
       year: null,
       scent_families: ["Fresh"],
       description: "",
       my_impressions: "",
       formats: [],
-      source_urls: [],
+      source_urls: sourceUrls,
       notes: [],
     },
   } as any;
@@ -31,9 +31,12 @@ beforeEach(() => {
 });
 
 it("looks up every pasted name (de-duplicated) and lists results", async () => {
+  const sourceUrl = "https://example.test/aventus";
   const lookup = vi
     .spyOn(api, "lookupPerfume")
-    .mockImplementation(async (n: string) => draftFor(n));
+    .mockImplementation(async (n: string) =>
+      draftFor(n, n === "Aventus" ? [sourceUrl] : []),
+    );
   render(
     <MemoryRouter>
       <BatchAdd />
@@ -47,6 +50,11 @@ it("looks up every pasted name (de-duplicated) and lists results", async () => {
 
   await waitFor(() => expect(screen.getByText("Aventus")).toBeInTheDocument());
   expect(screen.getByText("Sauvage")).toBeInTheDocument();
+  const source = screen.getByRole("link", { name: sourceUrl });
+  expect(source).toHaveAttribute("href", sourceUrl);
+  expect(source.closest("label")).toBeNull();
+  expect(source.closest(".batch-row")).toHaveTextContent("Aventus");
+  expect(screen.getAllByRole("group", { name: "Sources" })).toHaveLength(1);
   // "Aventus" appears once despite being listed twice.
   expect(lookup).toHaveBeenCalledTimes(2);
 });
