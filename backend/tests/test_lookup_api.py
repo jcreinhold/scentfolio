@@ -1,15 +1,18 @@
+from http import HTTPStatus
+
 import pytest
 from fastapi.testclient import TestClient
+
+from app.agent import Draft
+from app.db import Base, make_engine, make_sessionmaker
 from app.main import (
     app,
-    get_session,
+    get_family_classifier,
     get_lookup,
     get_note_enricher,
-    get_family_classifier,
+    get_session,
 )
-from app.db import Base, make_engine, make_sessionmaker
-from app.agent import Draft
-from app.schemas import PerfumeCreate, NoteInput
+from app.schemas import NoteInput, PerfumeCreate
 
 
 @pytest.fixture
@@ -60,7 +63,7 @@ def client():
 
 def test_lookup_returns_draft(client):
     r = client.post("/api/lookup", json={"name": "Aventus"})
-    assert r.status_code == 200
+    assert r.status_code == HTTPStatus.OK
     body = r.json()
     assert body["confidence"] == "high"
     assert body["perfume"]["name"] == "Aventus"
@@ -87,7 +90,7 @@ def test_enrich_missing_notes_fills_and_returns_count(client):
         },
     )
     r = client.post("/api/notes/enrich-missing")
-    assert r.status_code == 200
+    assert r.status_code == HTTPStatus.OK
     assert r.json()["updated"] == 1
     assert r.json()["remaining"] == 0
 
@@ -110,7 +113,7 @@ def test_reclassify_overwrites_families_and_returns_count(client):
         },
     )
     r = client.post("/api/perfumes/reclassify")
-    assert r.status_code == 200
+    assert r.status_code == HTTPStatus.OK
     assert r.json()["updated"] == 1
     p = client.get("/api/perfumes").json()[0]
     assert p["scent_families"] == ["Gourmand", "Green"]  # from the fake classifier

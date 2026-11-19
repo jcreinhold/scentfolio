@@ -1,6 +1,7 @@
 import pytest
 from pydantic import ValidationError
-from app.schemas import PerfumeCreate, NoteInput
+
+from app.schemas import NoteInput, PerfumeCreate
 
 
 def test_perfume_create_validates_format_and_family():

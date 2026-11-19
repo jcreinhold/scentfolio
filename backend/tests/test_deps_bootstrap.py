@@ -6,11 +6,12 @@ We run in a subprocess so it exercises a fresh import of `app.deps` in isolation
 (a same-process test wouldn't catch the ordering bug, since other test modules
 import app.models first and register the tables globally)."""
 
-from contextlib import closing
 import sqlite3
 import subprocess
 import sys
 import textwrap
+from contextlib import closing
+from pathlib import Path
 
 
 def test_prod_engine_creates_tables_on_fresh_import(tmp_path):
@@ -25,10 +26,46 @@ def test_prod_engine_creates_tables_on_fresh_import(tmp_path):
         print("OK", sorted(names))
     """)
     result = subprocess.run(
-        [sys.executable, "-c", script], capture_output=True, text=True
+        [sys.executable, "-c", script], capture_output=True, check=False, text=True
     )
     assert result.returncode == 0, result.stderr
     assert "OK" in result.stdout
+
+
+def test_app_selects_database_before_loading_provider_env(tmp_path, monkeypatch):
+    env_file = tmp_path / ".env"
+    env_file.write_text(
+        "SCENTFOLIO_DB_URL=sqlite:///from-dotenv.db\n"
+        "SCENTFOLIO_LLM_MODEL=dotenv-test-model\n"
+    )
+    for variable in (
+        "SCENTFOLIO_DB_URL",
+        "SCENTFOLIO_LLM_MODEL",
+        "SCENTFOLIO_SERVE_UI",
+        "PYTHON_DOTENV_DISABLED",
+    ):
+        monkeypatch.delenv(variable, raising=False)
+    monkeypatch.setenv("PYTHONPATH", str(Path(__file__).resolve().parents[1]))
+    script = textwrap.dedent("""
+        import os
+        import sys
+        from dotenv import main as dotenv_main
+
+        dotenv_main.find_dotenv = lambda: sys.argv[1]
+        import app.main
+        from app.deps import _engine
+        assert _engine.url.database == "scentfolio.db"
+        assert os.environ["SCENTFOLIO_LLM_MODEL"] == "dotenv-test-model"
+    """)
+    result = subprocess.run(
+        [sys.executable, "-c", script, str(env_file)],
+        cwd=tmp_path,
+        capture_output=True,
+        check=False,
+        text=True,
+    )
+    assert result.returncode == 0, result.stderr
+    assert (tmp_path / "scentfolio.db").is_file()
 
 
 def test_app_boot_upgrades_initial_sqlite_schema_in_place(tmp_path, monkeypatch):
@@ -79,7 +116,9 @@ def test_app_boot_upgrades_initial_sqlite_schema_in_place(tmp_path, monkeypatch)
                 "my_impressions": "Sampled in winter",
                 "formats": ["travel", "sample"],
                 "source_urls": ["https://example.com/woodland"],
-                "notes": [{"id": 7, "name": "cedar", "tier": "base", "family": "Woody"}],
+                "notes": [{
+                    "id": 7, "name": "cedar", "tier": "base", "family": "Woody"
+                }],
             }
             note = client.get("/api/notes/cedar")
             note.raise_for_status()
@@ -92,6 +131,6 @@ def test_app_boot_upgrades_initial_sqlite_schema_in_place(tmp_path, monkeypatch)
 
     for _ in range(2):
         result = subprocess.run(
-            [sys.executable, "-c", script], capture_output=True, text=True
+            [sys.executable, "-c", script], capture_output=True, check=False, text=True
         )
         assert result.returncode == 0, result.stderr

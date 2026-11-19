@@ -1,7 +1,10 @@
+from http import HTTPStatus
+
 import pytest
 from fastapi.testclient import TestClient
-from app.main import app, get_session
+
 from app.db import Base, make_engine, make_sessionmaker
+from app.main import app, get_session
 
 
 @pytest.fixture
@@ -34,7 +37,7 @@ def _create(client, name="Sauvage", house="Dior", families=("Fresh",)):
 
 def test_create_and_get_perfume(client):
     r = _create(client, families=("Gourmand", "Woody"))
-    assert r.status_code == 201
+    assert r.status_code == HTTPStatus.CREATED
     pid = r.json()["id"]
     got = client.get(f"/api/perfumes/{pid}")
     assert got.json()["notes"][0]["name"] == "bergamot"
@@ -59,13 +62,13 @@ def test_export_csv(client):
         },
     )
     r = client.get("/api/perfumes/export.csv")
-    assert r.status_code == 200
+    assert r.status_code == HTTPStatus.OK
     assert r.headers["content-type"].startswith("text/csv")
     assert "attachment" in r.headers["content-disposition"]
     lines = r.text.strip().splitlines()
-    assert (
-        lines[0]
-        == "name,status,house,perfumer,year,families,formats,top_notes,heart_notes,base_notes,description,impressions"
+    assert lines[0] == (
+        "name,status,house,perfumer,year,families,formats,"
+        "top_notes,heart_notes,base_notes,description,impressions"
     )
     assert any(
         row.startswith("Owned,collection,") and "Fresh; Woody" in row
@@ -102,15 +105,15 @@ def test_status_filter_and_move(client):
 def test_note_detail_lists_perfumes(client):
     _create(client)
     r = client.get("/api/notes/bergamot")
-    assert r.status_code == 200
+    assert r.status_code == HTTPStatus.OK
     assert [p["name"] for p in r.json()["perfumes"]] == ["Sauvage"]
 
 
 def test_insights_endpoints(client):
     _create(client)
-    assert client.get("/api/insights/notes").status_code == 200
-    assert client.get("/api/insights/families").status_code == 200
-    assert client.get("/api/insights/similar").status_code == 200
+    assert client.get("/api/insights/notes").status_code == HTTPStatus.OK
+    assert client.get("/api/insights/families").status_code == HTTPStatus.OK
+    assert client.get("/api/insights/similar").status_code == HTTPStatus.OK
 
 
 def test_update_impressions(client):
@@ -122,9 +125,9 @@ def test_update_impressions(client):
 def test_delete_perfume(client):
     pid = _create(client).json()["id"]
     r = client.delete(f"/api/perfumes/{pid}")
-    assert r.status_code == 204
-    assert client.get(f"/api/perfumes/{pid}").status_code == 404
+    assert r.status_code == HTTPStatus.NO_CONTENT
+    assert client.get(f"/api/perfumes/{pid}").status_code == HTTPStatus.NOT_FOUND
 
 
 def test_delete_missing_perfume_returns_404(client):
-    assert client.delete("/api/perfumes/999").status_code == 404
+    assert client.delete("/api/perfumes/999").status_code == HTTPStatus.NOT_FOUND

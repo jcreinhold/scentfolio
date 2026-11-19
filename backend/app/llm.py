@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from functools import partial
 from typing import Literal
 
-from httpx2 import AsyncClient, HTTPError, InvalidURL, Request, Timeout, URL
+from httpx2 import URL, AsyncClient, HTTPError, InvalidURL, Request, Timeout
 from pydantic_ai import Agent
 from pydantic_ai.capabilities import Citations, WebSearch
 from pydantic_ai.exceptions import (

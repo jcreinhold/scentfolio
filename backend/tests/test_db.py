@@ -1,5 +1,6 @@
 from sqlalchemy import text
-from app.db import Base, make_engine, make_sessionmaker, ensure_schema
+
+from app.db import Base, ensure_schema, make_engine, make_sessionmaker
 
 
 def test_engine_creates_tables_and_session_queries():

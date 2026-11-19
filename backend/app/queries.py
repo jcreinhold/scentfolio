@@ -1,7 +1,9 @@
 from itertools import combinations
-from sqlalchemy import select, func
+
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
-from app.models import Perfume, Note, PerfumeNote
+
+from app.models import Note, Perfume, PerfumeNote
 
 
 def note_frequency_by_tier(session: Session) -> dict[str, list[tuple[str, int]]]:
@@ -20,8 +22,8 @@ def note_frequency_by_tier(session: Session) -> dict[str, list[tuple[str, int]]]
     for name, tier, count in session.execute(stmt).all():
         if tier in by_tier:
             by_tier[tier].append((name, count))
-    for tier in by_tier:
-        by_tier[tier].sort(key=lambda nc: nc[1], reverse=True)
+    for lst in by_tier.values():
+        lst.sort(key=lambda nc: nc[1], reverse=True)
     return by_tier
 
 

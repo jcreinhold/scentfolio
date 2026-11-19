@@ -7,6 +7,8 @@ from httpx2 import AsyncClient, MockTransport, Response
 
 from app import llm
 
+CLAUDE_ADAPTIVE_MIN_TOKENS = 4096
+
 
 @pytest.fixture(autouse=True)
 def clean_environment(monkeypatch):
@@ -152,7 +154,7 @@ def test_anthropic_default_uses_legacy_key_and_native_search(monkeypatch, model_
     assert call.headers["x-official-header"] == "retained"
     body = json.loads(call.content)
     assert body["model"] == "claude-opus-5-5"
-    assert body["max_tokens"] == 4096
+    assert body["max_tokens"] == CLAUDE_ADAPTIVE_MIN_TOKENS
     assert body["output_config"]["effort"] == "low"
     assert body["tools"][0]["type"].startswith("web_search_")
     assert "Research the perfume." in str(body)
@@ -189,9 +191,10 @@ def test_anthropic_enrichment_preserves_default_model_without_search(
     requests, respond = model_http
     monkeypatch.setenv("SCENTFOLIO_LLM_API_KEY", "configured-key")
     respond.side_effect = lambda _: _anthropic_response(model="claude-haiku-5-5")
+    requested_tokens = 8000
 
     assert llm.complete(
-        "System", "User", max_tokens=8000, task="enrich", search="Research."
+        "System", "User", max_tokens=requested_tokens, task="enrich", search="Research."
     ) == (
         "Model response",
         [],
@@ -200,7 +203,7 @@ def test_anthropic_enrichment_preserves_default_model_without_search(
     assert call.headers["authorization"] == "Bearer configured-key"
     body = json.loads(call.content)
     assert body["model"] == "claude-haiku-5-5"
-    assert body["max_tokens"] == 8000
+    assert body["max_tokens"] == requested_tokens
     assert body["output_config"]["effort"] == "low"
     assert not body.get("tools")
 
@@ -210,8 +213,11 @@ def test_anthropic_model_override_keeps_requested_budget(monkeypatch, model_http
     monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")
     monkeypatch.setenv("SCENTFOLIO_LLM_MODEL", "claude-opus-4-8")
     respond.side_effect = lambda _: _anthropic_response(model="claude-opus-4-8")
+    requested_tokens = 1500
 
-    assert llm.complete("System", "User", max_tokens=1500, task="lookup") == (
+    assert llm.complete(
+        "System", "User", max_tokens=requested_tokens, task="lookup"
+    ) == (
         "Model response",
         [],
     )
@@ -219,7 +225,7 @@ def test_anthropic_model_override_keeps_requested_budget(monkeypatch, model_http
     (call,) = requests
     body = json.loads(call.content)
     assert body["model"] == "claude-opus-4-8"
-    assert body["max_tokens"] == 1500
+    assert body["max_tokens"] == requested_tokens
     assert not body.get("output_config", {}).get("effort")
 
 
@@ -241,8 +247,13 @@ def test_native_openai_lookup_uses_responses_and_common_citations(
         ]
     )
 
+    requested_tokens = 50
     text, sources = llm.complete(
-        "System", "User", max_tokens=50, task="lookup", search="Research the perfume."
+        "System",
+        "User",
+        max_tokens=requested_tokens,
+        task="lookup",
+        search="Research the perfume.",
     )
 
     assert "https://unverified.example" in text
@@ -252,7 +263,7 @@ def test_native_openai_lookup_uses_responses_and_common_citations(
     assert call.headers["authorization"] == "Bearer openai-key"
     body = json.loads(call.content)
     assert body["model"] == "gpt-5"
-    assert body["max_output_tokens"] == 50
+    assert body["max_output_tokens"] == requested_tokens
     assert body["store"] is False
     assert body["tools"][0]["type"] == "web_search"
     assert "Research the perfume." in str(body)
@@ -305,9 +316,14 @@ def test_compatible_mode_keeps_vendor_fallback_keys_local(monkeypatch, model_htt
     if key:
         monkeypatch.setenv("SCENTFOLIO_LLM_API_KEY", key)
     respond.side_effect = lambda _: _chat_response()
+    requested_tokens = 50
 
     assert llm.complete(
-        "System", "User", max_tokens=50, task="lookup", search="Research the perfume."
+        "System",
+        "User",
+        max_tokens=requested_tokens,
+        task="lookup",
+        search="Research the perfume.",
     ) == ("Model response", [])
 
     (call,) = requests
@@ -316,7 +332,7 @@ def test_compatible_mode_keeps_vendor_fallback_keys_local(monkeypatch, model_htt
     assert "OpenAI-Organization" not in call.headers
     assert "OpenAI-Project" not in call.headers
     body = json.loads(call.content)
-    assert body["max_tokens"] == 50
+    assert body["max_tokens"] == requested_tokens
     assert not body.get("tools")
     assert "Omit unknown details" in str(body)
     assert "Research the perfume." not in str(body)
@@ -332,8 +348,11 @@ def test_official_openai_chat_uses_canonical_key_and_token_limit(
     monkeypatch.setenv("OPENAI_ORG_ID", "own-organization")
     monkeypatch.setenv("OPENAI_PROJECT_ID", "own-project")
     respond.side_effect = lambda _: _chat_response()
+    requested_tokens = 50
 
-    assert llm.complete("System", "User", max_tokens=50, task="enrich") == (
+    assert llm.complete(
+        "System", "User", max_tokens=requested_tokens, task="enrich"
+    ) == (
         "Model response",
         [],
     )
@@ -342,7 +361,7 @@ def test_official_openai_chat_uses_canonical_key_and_token_limit(
     assert call.headers["authorization"] == "Bearer openai-key"
     assert call.headers["OpenAI-Organization"] == "own-organization"
     assert call.headers["OpenAI-Project"] == "own-project"
-    assert json.loads(call.content)["max_completion_tokens"] == 50
+    assert json.loads(call.content)["max_completion_tokens"] == requested_tokens
 
 
 def test_classification_concurrent_operations_use_separate_clients(
@@ -357,20 +376,16 @@ def test_classification_concurrent_operations_use_separate_clients(
             "System", name, max_tokens=50, task="classify", search="Research."
         )
 
-    with ThreadPoolExecutor(max_workers=4) as workers:
-        assert (
-            list(workers.map(classify, ["A", "B", "C", "D"]))
-            == [
-                ("Model response", []),
-            ]
-            * 4
-        )
-    assert len(requests) == 4
+    perfumes = ("A", "B", "C", "D")
+    with ThreadPoolExecutor(max_workers=len(perfumes)) as workers:
+        results = list(workers.map(classify, perfumes))
+    assert results == [("Model response", [])] * len(perfumes)
+    assert len(requests) == len(perfumes)
     for call in requests:
         body = json.loads(call.content)
         assert body["tools"]
         assert body["model"] == "claude-opus-5-5"
-        assert body["max_tokens"] == 4096
+        assert body["max_tokens"] == CLAUDE_ADAPTIVE_MIN_TOKENS
 
 
 @pytest.mark.parametrize(

@@ -12,16 +12,19 @@ The backend supports Python 3.14 and 3.15. uv defaults to Python 3.15.2, pinned 
 `backend/.python-version`. To use Python 3.14, run `export UV_PYTHON=3.14` in the
 backend terminal before setup and startup.
 
-Install the locked dependencies from the repo root:
+Install the locked dependencies and serve the app from the repo root:
 
 ```sh
 make setup
+make serve
 ```
 
-Run `make dev-backend` and `make dev-frontend` in separate terminals.
+`make serve` builds the frontend and serves it alongside the API. Open
+[Scentfolio on port 8000](http://localhost:8000).
 
-Open [Scentfolio](http://localhost:5173). Vite sends `/api` requests to
-[FastAPI on port 8000](http://localhost:8000/docs).
+For hot reload, run `make dev-backend` and `make dev-frontend` in separate
+terminals and open [Scentfolio on port 5173](http://localhost:5173). Vite sends
+`/api` requests to [FastAPI on port 8000](http://localhost:8000/docs).
 
 Run `make help` to list the available commands.
 
@@ -35,7 +38,7 @@ section appear in Collection.
 If your database lives elsewhere, run the launcher with its existing file path:
 
 ```sh
-SCENTFOLIO_DB_URL="sqlite:////absolute/path/to/scentfolio.db" make dev-backend
+SCENTFOLIO_DB_URL="sqlite:////absolute/path/to/scentfolio.db" make serve
 ```
 
 ### Enable AI features

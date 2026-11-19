@@ -1,11 +1,13 @@
-from datetime import datetime, timezone
-from sqlalchemy import String, Integer, Text, ForeignKey, DateTime
+from datetime import UTC, datetime
+
+from sqlalchemy import DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+
 from app.db import Base
 
 
 def _now():
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 class Perfume(Base):
@@ -24,7 +26,7 @@ class Perfume(Base):
     formats: Mapped[str] = mapped_column(String(50), default="")  # comma-joined
     source_urls: Mapped[str] = mapped_column(Text, default="")  # newline-joined
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_now)
-    perfume_notes: Mapped[list["PerfumeNote"]] = relationship(
+    perfume_notes: Mapped[list[PerfumeNote]] = relationship(
         back_populates="perfume", cascade="all, delete-orphan"
     )
 
@@ -54,7 +56,7 @@ class Note(Base):
     detail_version: Mapped[int] = mapped_column(
         Integer, default=0
     )  # enrichment schema version
-    perfume_notes: Mapped[list["PerfumeNote"]] = relationship(back_populates="note")
+    perfume_notes: Mapped[list[PerfumeNote]] = relationship(back_populates="note")
 
 
 class PerfumeNote(Base):
@@ -62,5 +64,5 @@ class PerfumeNote(Base):
     perfume_id: Mapped[int] = mapped_column(ForeignKey("perfumes.id"), primary_key=True)
     note_id: Mapped[int] = mapped_column(ForeignKey("notes.id"), primary_key=True)
     tier: Mapped[str] = mapped_column(String(10), primary_key=True)
-    perfume: Mapped["Perfume"] = relationship(back_populates="perfume_notes")
-    note: Mapped["Note"] = relationship(back_populates="perfume_notes")
+    perfume: Mapped[Perfume] = relationship(back_populates="perfume_notes")
+    note: Mapped[Note] = relationship(back_populates="perfume_notes")

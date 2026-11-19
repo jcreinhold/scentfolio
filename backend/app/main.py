@@ -1,19 +1,33 @@
 import csv
 import io
-from fastapi import FastAPI, Depends, HTTPException, Response
+import os
+from collections.abc import Callable
+from concurrent.futures import ThreadPoolExecutor
+from pathlib import Path
+from typing import Annotated
+
+from fastapi import Depends, FastAPI, HTTPException, Response
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
-from app.deps import get_session
-from app import repository as repo, queries
-from app.schemas import PerfumeCreate, PerfumeUpdate
-from concurrent.futures import ThreadPoolExecutor
+
+from app import deps, queries
+from app import repository as repo
 from app.agent import (
-    lookup as live_lookup,
-    enrich_notes as live_enrich,
-    classify_families as live_classify,
+    Draft,
     LookupError,
 )
+from app.agent import (
+    classify_families as live_classify,
+)
+from app.agent import (
+    enrich_notes as live_enrich,
+)
+from app.agent import (
+    lookup as live_lookup,
+)
+from app.frontend import serve_frontend
+from app.schemas import PerfumeCreate, PerfumeUpdate
 
 
 class LookupRequest(BaseModel):
@@ -30,6 +44,11 @@ def get_note_enricher():
 
 def get_family_classifier():
     return live_classify
+
+
+# Import deps before the model modules load their .env settings.
+get_session = deps.get_session
+SessionDep = Annotated[Session, Depends(get_session)]
 
 
 ENRICH_CHUNK = 12  # smaller batches: v3 enrichment returns long-form content
@@ -50,22 +69,27 @@ def health():
 
 
 @app.post("/api/lookup")
-def lookup_perfume(req: LookupRequest, lookup=Depends(get_lookup)):
+def lookup_perfume(
+    req: LookupRequest, lookup: Annotated[Callable[[str], Draft], Depends(get_lookup)]
+):
     try:
         draft = lookup(req.name)
     except LookupError as e:
-        raise HTTPException(422, f"Lookup failed: {e}")
+        raise HTTPException(422, f"Lookup failed: {e}") from e
     return draft.model_dump()
 
 
 @app.post("/api/perfumes", status_code=201)
-def create_perfume(data: PerfumeCreate, session: Session = Depends(get_session)):
+def create_perfume(data: PerfumeCreate, session: SessionDep):
     return repo.create_perfume(session, data)
 
 
 @app.post("/api/perfumes/reclassify")
 def reclassify_perfumes(
-    session: Session = Depends(get_session), classify=Depends(get_family_classifier)
+    session: SessionDep,
+    classify: Annotated[
+        Callable[[str, str, list[str]], list[str]], Depends(get_family_classifier)
+    ],
 ):
     perfumes = repo.list_perfumes(session)
 
@@ -86,20 +110,18 @@ def reclassify_perfumes(
 
 
 @app.get("/api/perfumes/check-duplicate")
-def check_duplicate(
-    name: str, house: str = "", session: Session = Depends(get_session)
-):
+def check_duplicate(name: str, session: SessionDep, house: str = ""):
     dup = repo.find_duplicate(session, name, house)
     return {"duplicate": dup is not None, "id": dup.id if dup else None}
 
 
 @app.get("/api/perfumes")
 def list_perfumes(
+    session: SessionDep,
     q: str | None = None,
     family: str | None = None,
     fmt: str | None = None,
     status: str | None = None,
-    session: Session = Depends(get_session),
 ):
     if q or family or fmt:
         return repo.search_perfumes(session, q=q, family=family, fmt=fmt, status=status)
@@ -123,9 +145,7 @@ CSV_COLUMNS = [
 
 
 @app.get("/api/perfumes/export.csv")
-def export_perfumes_csv(
-    status: str | None = None, session: Session = Depends(get_session)
-):
+def export_perfumes_csv(session: SessionDep, status: str | None = None):
     perfumes = repo.list_perfumes(session, status=status)
     buf = io.StringIO()
     writer = csv.writer(buf)
@@ -160,7 +180,7 @@ def export_perfumes_csv(
 
 
 @app.get("/api/perfumes/{perfume_id}")
-def get_perfume(perfume_id: int, session: Session = Depends(get_session)):
+def get_perfume(perfume_id: int, session: SessionDep):
     p = repo.get_perfume(session, perfume_id)
     if not p:
         raise HTTPException(404, "Perfume not found")
@@ -168,9 +188,7 @@ def get_perfume(perfume_id: int, session: Session = Depends(get_session)):
 
 
 @app.patch("/api/perfumes/{perfume_id}")
-def update_perfume(
-    perfume_id: int, data: PerfumeUpdate, session: Session = Depends(get_session)
-):
+def update_perfume(perfume_id: int, data: PerfumeUpdate, session: SessionDep):
     p = repo.update_perfume(session, perfume_id, data)
     if not p:
         raise HTTPException(404, "Perfume not found")
@@ -178,13 +196,13 @@ def update_perfume(
 
 
 @app.delete("/api/perfumes/{perfume_id}", status_code=204)
-def delete_perfume(perfume_id: int, session: Session = Depends(get_session)):
+def delete_perfume(perfume_id: int, session: SessionDep):
     if not repo.delete_perfume(session, perfume_id):
         raise HTTPException(404, "Perfume not found")
 
 
 @app.get("/api/notes")
-def list_notes(session: Session = Depends(get_session)):
+def list_notes(session: SessionDep):
     return [
         {
             "id": n.id,
@@ -204,7 +222,10 @@ def list_notes(session: Session = Depends(get_session)):
 
 @app.post("/api/notes/enrich-missing")
 def enrich_missing_notes(
-    session: Session = Depends(get_session), enrich=Depends(get_note_enricher)
+    session: SessionDep,
+    enrich: Annotated[
+        Callable[[list[str]], dict[str, dict]], Depends(get_note_enricher)
+    ],
 ):
     names = [n.name for n in repo.notes_missing_enrichment(session)]
     updated = 0
@@ -221,7 +242,7 @@ def enrich_missing_notes(
 
 
 @app.get("/api/notes/{note_name}")
-def note_detail(note_name: str, session: Session = Depends(get_session)):
+def note_detail(note_name: str, session: SessionDep):
     notes = {n.name: n for n in repo.list_notes(session)}
     n = notes.get(note_name.strip().lower())
     perfumes = repo.perfumes_with_note(session, note_name)
@@ -240,7 +261,7 @@ def note_detail(note_name: str, session: Session = Depends(get_session)):
 
 
 @app.get("/api/insights/notes")
-def insight_notes(session: Session = Depends(get_session)):
+def insight_notes(session: SessionDep):
     by_tier = queries.note_frequency_by_tier(session)
     return {
         tier: [{"note": name, "count": c} for name, c in rows]
@@ -249,15 +270,19 @@ def insight_notes(session: Session = Depends(get_session)):
 
 
 @app.get("/api/insights/families")
-def insight_families(session: Session = Depends(get_session)):
+def insight_families(session: SessionDep):
     return [{"family": f, "count": c} for f, c in queries.family_breakdown(session)]
 
 
 @app.get("/api/insights/formats")
-def insight_formats(session: Session = Depends(get_session)):
+def insight_formats(session: SessionDep):
     return queries.format_breakdown(session)
 
 
 @app.get("/api/insights/similar")
-def insight_similar(session: Session = Depends(get_session)):
+def insight_similar(session: SessionDep):
     return queries.similar_pairs(session)
+
+
+if os.getenv("SCENTFOLIO_SERVE_UI") == "1":
+    serve_frontend(app, Path(__file__).resolve().parents[2] / "frontend" / "dist")

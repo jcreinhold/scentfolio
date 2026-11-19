@@ -1,4 +1,4 @@
-from app.models import Perfume, Note, PerfumeNote
+from app.models import Note, Perfume, PerfumeNote
 
 
 def test_perfume_note_relationship(session):

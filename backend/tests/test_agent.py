@@ -1,11 +1,13 @@
 import json
+
 import pytest
+
 from app.agent import (
-    extract_draft,
-    enrich_notes,
-    classify_families,
-    lookup,
     LookupError,
+    classify_families,
+    enrich_notes,
+    extract_draft,
+    lookup,
 )
 
 

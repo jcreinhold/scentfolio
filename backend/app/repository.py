@@ -1,8 +1,9 @@
-from sqlalchemy import select, func
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
-from app.models import Perfume, Note, PerfumeNote
-from app.schemas import PerfumeCreate, PerfumeOut, NoteOut, PerfumeUpdate
+
 from app.agent import ENRICH_VERSION
+from app.models import Note, Perfume, PerfumeNote
+from app.schemas import NoteOut, PerfumeCreate, PerfumeOut, PerfumeUpdate
 
 
 def _normalize(name: str) -> str:

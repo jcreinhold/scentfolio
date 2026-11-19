@@ -1,5 +1,5 @@
 from app import repository as repo
-from app.schemas import PerfumeCreate, NoteInput
+from app.schemas import NoteInput, PerfumeCreate, PerfumeUpdate
 
 
 def _sample(name="Sauvage", house="Dior"):
@@ -114,7 +114,6 @@ def test_update_moves_between_sections(session):
     created = repo.create_perfume(
         session, PerfumeCreate(name="Wanted", house="H", status="saved", notes=[])
     )
-    from app.schemas import PerfumeUpdate
 
     moved = repo.update_perfume(session, created.id, PerfumeUpdate(status="collection"))
     assert moved.status == "collection"
@@ -137,26 +136,24 @@ def test_notes_missing_enrichment_by_version(session):
 
 def test_apply_note_enrichment_sets_new_fields_and_counts(session):
     repo.create_perfume(session, _sample())
-    updated = repo.apply_note_enrichment(
-        session,
-        {
-            "Bergamot": {
-                "description": "Bright citrus.",
-                "origin": "natural",
-                "production": "Cold-pressed.",
-                "sourcing": "Calabria",
-                "compounds": "",
-            },
-            "ambroxan": {
-                "description": "Ambery.",
-                "origin": "synthetic",
-                "production": "From sclareol.",
-                "compounds": "ambrox",
-                "proprietary_to": "",
-            },
+    enrichment = {
+        "Bergamot": {
+            "description": "Bright citrus.",
+            "origin": "natural",
+            "production": "Cold-pressed.",
+            "sourcing": "Calabria",
+            "compounds": "",
         },
-    )
-    assert updated == 2
+        "ambroxan": {
+            "description": "Ambery.",
+            "origin": "synthetic",
+            "production": "From sclareol.",
+            "compounds": "ambrox",
+            "proprietary_to": "",
+        },
+    }
+    updated = repo.apply_note_enrichment(session, enrichment)
+    assert updated == len(enrichment)
     notes = {n.name: n for n in repo.list_notes(session)}
     assert notes["bergamot"].sourcing == "Calabria"
     assert notes["ambroxan"].compounds == "ambrox"

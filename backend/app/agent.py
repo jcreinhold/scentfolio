@@ -1,10 +1,12 @@
 import json
 import re
 from typing import Literal
+
+from dotenv import load_dotenv
 from pydantic import BaseModel, ValidationError
+
 from app.llm import LookupError, complete
 from app.schemas import PerfumeCreate
-from dotenv import load_dotenv
 
 load_dotenv()
 
@@ -42,7 +44,8 @@ SYSTEM_PROMPT = (
     "across different perfumes. For example use 'bergamot' (not 'Calabrian bergamot' "
     "or 'Italian bergamot'), 'rose' (not 'Bulgarian rose'), 'musk' (not 'white musk'), "
     "'pepper' (not 'Sichuan pepper'). Keep genuinely distinct notes distinct "
-    "(e.g. 'pink pepper' vs 'black pepper' only if the source clearly distinguishes them)."
+    "(e.g. 'pink pepper' vs 'black pepper' only if the source clearly "
+    "distinguishes them)."
 )
 LOOKUP_SEARCH = (
     "Use web search to find details on Fragrantica and the brand's official site."

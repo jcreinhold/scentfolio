@@ -1,5 +1,6 @@
-from app import repository as repo, queries
-from app.schemas import PerfumeCreate, NoteInput
+from app import queries
+from app import repository as repo
+from app.schemas import NoteInput, PerfumeCreate
 
 
 def _seed(session):
@@ -34,20 +35,20 @@ def _seed(session):
 def test_note_frequency_by_tier(session):
     _seed(session)
     by_tier = queries.note_frequency_by_tier(session)
-    # bergamot is a TOP note in both perfumes; birch heart, ambroxan base (once each).
-    assert dict(by_tier["top"])["bergamot"] == 2
-    assert dict(by_tier["heart"]) == {"birch": 1}
-    assert dict(by_tier["base"]) == {"ambroxan": 1}
-    # bergamot is only ever a top note here -> not counted under heart/base.
-    assert "bergamot" not in dict(by_tier["base"])
+    assert {tier: dict(counts) for tier, counts in by_tier.items()} == {
+        "top": {"bergamot": 2},
+        "heart": {"birch": 1},
+        "base": {"ambroxan": 1},
+    }
 
 
 def test_family_breakdown(session):
     _seed(session)
-    fams = dict(queries.family_breakdown(session))
-    # Multi-tag rows contribute to each family: Woody appears on both.
-    assert fams["Woody"] == 2
-    assert fams["Fresh"] == 1 and fams["Chypre"] == 1
+    assert dict(queries.family_breakdown(session)) == {
+        "Woody": 2,
+        "Fresh": 1,
+        "Chypre": 1,
+    }
 
 
 def test_similarity_is_tier_aware_and_family_weighted(session):
