@@ -1,15 +1,17 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { lookupPerfume, checkDuplicate, createPerfume } from "../api";
 import SourceLinks from "../components/SourceLinks";
 import { mapPool } from "../lib/mapPool";
-import type { Draft } from "../types";
+import { errorMessage } from "../lib/useRequest";
+import type { Draft, PerfumeStatus } from "../types";
 
 const LOOKUP_CONCURRENCY = 4;
 const SAVE_CONCURRENCY = 4;
 
 type Status = "loading" | "success" | "error";
 type SaveState = "saving" | "saved" | "error";
+export type AddAction = "lookup" | "save" | null;
 
 interface Row {
   name: string;
@@ -37,14 +39,23 @@ function parseNames(text: string): string[] {
 }
 
 export default function BatchAdd({
-  status = "collection",
+  status,
+  action,
+  onAction,
 }: {
-  status?: string;
+  status: PerfumeStatus;
+  action: AddAction;
+  onAction: (action: AddAction) => void;
 }) {
   const [text, setText] = useState("");
   const [rows, setRows] = useState<Row[] | null>(null);
-  const [running, setRunning] = useState(false);
-  const [savedCount, setSavedCount] = useState<number | null>(null);
+  const [saved, setSaved] = useState<{
+    count: number;
+    status: PerfumeStatus;
+  } | null>(null);
+  const run = useRef<AbortController | null>(null);
+  useEffect(() => () => run.current?.abort(), []);
+  const names = parseNames(text);
 
   function update(index: number, patch: Partial<Row>) {
     setRows(
@@ -54,17 +65,20 @@ export default function BatchAdd({
   }
 
   async function lookupAll() {
-    const names = parseNames(text);
-    if (names.length === 0) return;
-    setSavedCount(null);
-    setRunning(true);
+    if (action || names.length === 0) return;
+    const controller = new AbortController();
+    run.current = controller;
+    const { signal } = controller;
+    setSaved(null);
+    onAction("lookup");
     setRows(names.map((name) => ({ name, status: "loading", kept: false })));
 
     await mapPool(
       names,
       LOOKUP_CONCURRENCY,
       async (name) => {
-        const draft = await lookupPerfume(name);
+        const draft = await lookupPerfume(name, signal);
+        signal.throwIfAborted();
         let duplicate = false;
         try {
           duplicate = (
@@ -87,17 +101,18 @@ export default function BatchAdd({
           update(i, {
             status: "error",
             kept: false,
-            error: (res.error as Error)?.message ?? "Lookup failed",
+            error: errorMessage(res.error, "Lookup failed"),
           });
         }
       },
+      signal,
     );
 
-    setRunning(false);
+    if (!signal.aborted) onAction(null);
   }
 
   async function saveAll() {
-    if (!rows) return;
+    if (action || !rows) return;
     const toSave = rows
       .map((r, i) => ({ r, i }))
       .filter(
@@ -105,7 +120,10 @@ export default function BatchAdd({
       );
     if (toSave.length === 0) return;
 
-    setRunning(true);
+    const controller = new AbortController();
+    run.current = controller;
+    const { signal } = controller;
+    onAction("save");
     toSave.forEach(({ i }) =>
       update(i, { saveState: "saving", saveError: undefined }),
     );
@@ -122,13 +140,16 @@ export default function BatchAdd({
         else
           update(i, {
             saveState: "error",
-            saveError: (res.error as Error)?.message ?? "Save failed",
+            saveError: errorMessage(res.error, "Save failed"),
           });
       },
+      signal,
     );
 
-    setSavedCount(results.filter((r) => r.ok).length);
-    setRunning(false);
+    if (!signal.aborted) {
+      setSaved({ count: results.filter((r) => r.ok).length, status });
+      onAction(null);
+    }
   }
 
   const selected =
@@ -145,22 +166,24 @@ export default function BatchAdd({
           "One perfume name per line…\nAventus\nSauvage\nBaccarat Rouge 540"
         }
         value={text}
+        disabled={action !== null}
         onChange={(e) => setText(e.target.value)}
       />
       <button
         onClick={lookupAll}
-        disabled={running || parseNames(text).length === 0}
+        disabled={action !== null || names.length === 0}
         style={{ marginTop: 8 }}
       >
-        {running && !savedCount
-          ? "Looking up…"
-          : `Look up all (${parseNames(text).length})`}
+        {action === "lookup" ? "Looking up…" : `Look up all (${names.length})`}
       </button>
 
-      {savedCount !== null && (
+      {saved !== null && (
         <p style={{ color: "#15803d" }}>
-          ✓ Added {savedCount} {savedCount === 1 ? "perfume" : "perfumes"} to
-          your collection. <Link to="/">View collection</Link>
+          ✓ Added {saved.count} {saved.count === 1 ? "perfume" : "perfumes"} to{" "}
+          {saved.status === "saved" ? "Saved" : "your collection"}.{" "}
+          <Link to={saved.status === "saved" ? "/saved" : "/"}>
+            {saved.status === "saved" ? "View Saved" : "View collection"}
+          </Link>
         </p>
       )}
 
@@ -170,8 +193,11 @@ export default function BatchAdd({
             <span className="label" style={{ marginTop: 0 }}>
               Review results
             </span>
-            <button onClick={saveAll} disabled={running || selected === 0}>
-              Save {selected} selected
+            <button
+              onClick={saveAll}
+              disabled={action !== null || selected === 0}
+            >
+              {action === "save" ? "Saving…" : `Save ${selected} selected`}
             </button>
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
@@ -200,7 +226,7 @@ export default function BatchAdd({
                       <input
                         type="checkbox"
                         checked={r.kept}
-                        disabled={r.saveState === "saved"}
+                        disabled={action === "save" || r.saveState === "saved"}
                         onChange={(e) => update(i, { kept: e.target.checked })}
                       />
                       <span style={{ flex: 1 }}>

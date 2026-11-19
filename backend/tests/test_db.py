@@ -1,6 +1,9 @@
-from sqlalchemy import text
+import sqlite3
+
+from sqlalchemy import inspect, text
 
 from app.db import Base, ensure_schema, make_engine, make_sessionmaker
+from app.deps import open_database
 
 
 def test_engine_creates_tables_and_session_queries():
@@ -44,3 +47,28 @@ def test_ensure_schema_adds_status_to_legacy_perfumes_table():
     with engine.connect() as conn:
         cols = {row[1] for row in conn.exec_driver_sql("PRAGMA table_info(perfumes)")}
     assert "status" in cols
+
+
+def test_file_bootstrap_adds_note_lookup_index_and_reopens(tmp_path):
+    url = f"sqlite:///{tmp_path / 'legacy.db'}"
+    legacy = make_engine(url)
+    with legacy.begin() as conn:
+        conn.exec_driver_sql(
+            "CREATE TABLE perfume_notes (perfume_id INTEGER NOT NULL, "
+            "note_id INTEGER NOT NULL, tier VARCHAR(10) NOT NULL, "
+            "PRIMARY KEY (perfume_id, note_id, tier))"
+        )
+    legacy.dispose()
+
+    for _ in range(2):
+        engine, sessions = open_database(url)
+        try:
+            indexes = inspect(engine).get_indexes("perfume_notes")
+            assert any(index["column_names"] == ["note_id"] for index in indexes)
+            with sessions() as session:
+                mode = session.scalar(text("PRAGMA journal_mode"))
+            assert mode == (
+                "wal" if sqlite3.sqlite_version_info >= (3, 51, 3) else "delete"
+            )
+        finally:
+            engine.dispose()

@@ -1,31 +1,22 @@
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
 from http import HTTPStatus
+from threading import Event
 
 import pytest
 from fastapi.testclient import TestClient
 
 from app.agent import Draft
-from app.db import Base, make_engine, make_sessionmaker
-from app.main import (
-    app,
-    get_family_classifier,
-    get_lookup,
-    get_note_enricher,
-    get_session,
-)
+from app.ai_work import AIWork
+from app.api import get_ai_work, get_family_classifier, get_lookup, get_note_enricher
+from app.llm import LookupError
+from app.main import create_app
 from app.schemas import NoteInput, PerfumeCreate
 
 
 @pytest.fixture
 def client():
-    engine = make_engine("sqlite:///:memory:")
-    Base.metadata.create_all(engine)
-    Session = make_sessionmaker(engine)
-
-    def _sess():
-        with Session() as s:
-            yield s
-
-    def _fake_lookup(name: str):
+    async def _fake_lookup(name: str):
         return Draft(
             perfume=PerfumeCreate(
                 name="Aventus",
@@ -36,7 +27,7 @@ def client():
             confidence="high",
         )
 
-    def _fake_enrich(names):
+    async def _fake_enrich(names):
         return {
             n: {
                 "description": f"{n} smells lovely.",
@@ -50,15 +41,15 @@ def client():
             for n in names
         }
 
-    def _fake_classify(name, house, notes):
+    async def _fake_classify(name, house, notes):
         return ["Gourmand", "Green"]
 
-    app.dependency_overrides[get_session] = _sess
+    app = create_app("sqlite:///:memory:")
     app.dependency_overrides[get_lookup] = lambda: _fake_lookup
     app.dependency_overrides[get_note_enricher] = lambda: _fake_enrich
     app.dependency_overrides[get_family_classifier] = lambda: _fake_classify
-    yield TestClient(app)
-    app.dependency_overrides.clear()
+    with TestClient(app) as test_client:
+        yield test_client
 
 
 def test_lookup_returns_draft(client):
@@ -67,6 +58,53 @@ def test_lookup_returns_draft(client):
     body = r.json()
     assert body["confidence"] == "high"
     assert body["perfume"]["name"] == "Aventus"
+
+
+def test_overloaded_lookup_leaves_health_responsive(client):
+    work = AIWork(max_concurrent=1)
+    entered = Event()
+    release = Event()
+
+    async def lookup(name):
+        entered.set()
+        await asyncio.to_thread(release.wait, 5)
+        return Draft(perfume=PerfumeCreate(name=name))
+
+    client.app.dependency_overrides[get_ai_work] = lambda: work
+    client.app.dependency_overrides[get_lookup] = lambda: lookup
+    with ThreadPoolExecutor(max_workers=1) as worker:
+        pending = worker.submit(client.post, "/api/lookup", json={"name": "A"})
+        try:
+            assert entered.wait(5)
+            response = client.post("/api/lookup", json={"name": "B"})
+            assert response.status_code == HTTPStatus.SERVICE_UNAVAILABLE
+            assert response.headers["Retry-After"]
+            assert client.get("/api/health").json() == {"status": "ok"}
+        finally:
+            release.set()
+        assert pending.result(timeout=5).status_code == HTTPStatus.OK
+
+
+@pytest.mark.parametrize(
+    ("path", "dependency"),
+    [
+        ("/api/notes/enrich-missing", get_note_enricher),
+        ("/api/perfumes/reclassify", get_family_classifier),
+    ],
+)
+def test_complete_maintenance_failure_has_a_safe_error(client, path, dependency):
+    async def missing_provider(*_args):
+        raise LookupError("Set SCENTFOLIO_LLM_API_KEY.")
+
+    client.app.dependency_overrides[dependency] = lambda: missing_provider
+    response = client.post(
+        "/api/perfumes",
+        json={"name": "A", "notes": [{"name": "rose", "tier": "top"}]},
+    )
+    assert response.status_code == HTTPStatus.CREATED
+    response = client.post(path)
+    assert response.status_code == HTTPStatus.BAD_GATEWAY
+    assert response.json() == {"detail": "Set SCENTFOLIO_LLM_API_KEY."}
 
 
 def test_duplicate_flag_on_create(client):

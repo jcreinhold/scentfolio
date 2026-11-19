@@ -1,5 +1,5 @@
+import asyncio
 import json
-from concurrent.futures import ThreadPoolExecutor
 from unittest.mock import Mock
 
 import pytest
@@ -8,6 +8,10 @@ from httpx2 import AsyncClient, MockTransport, Response
 from app import llm
 
 CLAUDE_ADAPTIVE_MIN_TOKENS = 4096
+
+
+def _complete(*args, **options):
+    return asyncio.run(llm.complete(*args, **options))
 
 
 @pytest.fixture(autouse=True)
@@ -144,7 +148,7 @@ def test_anthropic_default_uses_legacy_key_and_native_search(monkeypatch, model_
         ]
     )
 
-    assert llm.complete(
+    assert _complete(
         "System", "User", max_tokens=50, task="lookup", search="Research the perfume."
     ) == ("Model response", ["https://perfume.example/product"])
 
@@ -172,7 +176,7 @@ def test_anthropic_gateway_uses_only_explicit_credentials(monkeypatch, model_htt
     )
     respond.side_effect = lambda _: _anthropic_response()
 
-    assert llm.complete(
+    assert _complete(
         "System", "User", max_tokens=50, task="lookup", search="Research."
     ) == ("Model response", [])
 
@@ -193,7 +197,7 @@ def test_anthropic_enrichment_preserves_default_model_without_search(
     respond.side_effect = lambda _: _anthropic_response(model="claude-haiku-5-5")
     requested_tokens = 8000
 
-    assert llm.complete(
+    assert _complete(
         "System", "User", max_tokens=requested_tokens, task="enrich", search="Research."
     ) == (
         "Model response",
@@ -215,9 +219,7 @@ def test_anthropic_model_override_keeps_requested_budget(monkeypatch, model_http
     respond.side_effect = lambda _: _anthropic_response(model="claude-opus-4-8")
     requested_tokens = 1500
 
-    assert llm.complete(
-        "System", "User", max_tokens=requested_tokens, task="lookup"
-    ) == (
+    assert _complete("System", "User", max_tokens=requested_tokens, task="lookup") == (
         "Model response",
         [],
     )
@@ -248,7 +250,7 @@ def test_native_openai_lookup_uses_responses_and_common_citations(
     )
 
     requested_tokens = 50
-    text, sources = llm.complete(
+    text, sources = _complete(
         "System",
         "User",
         max_tokens=requested_tokens,
@@ -285,7 +287,7 @@ def test_native_openai_keeps_search_out_of_other_tasks(monkeypatch, model_http, 
     )
 
     assert (
-        llm.complete(
+        _complete(
             "System", "User", max_tokens=50, task=task, search="Research the perfume."
         )[1]
         == []
@@ -318,7 +320,7 @@ def test_compatible_mode_keeps_vendor_fallback_keys_local(monkeypatch, model_htt
     respond.side_effect = lambda _: _chat_response()
     requested_tokens = 50
 
-    assert llm.complete(
+    assert _complete(
         "System",
         "User",
         max_tokens=requested_tokens,
@@ -350,9 +352,7 @@ def test_official_openai_chat_uses_canonical_key_and_token_limit(
     respond.side_effect = lambda _: _chat_response()
     requested_tokens = 50
 
-    assert llm.complete(
-        "System", "User", max_tokens=requested_tokens, task="enrich"
-    ) == (
+    assert _complete("System", "User", max_tokens=requested_tokens, task="enrich") == (
         "Model response",
         [],
     )
@@ -371,14 +371,19 @@ def test_classification_concurrent_operations_use_separate_clients(
     monkeypatch.setenv("ANTHROPIC_API_KEY", "legacy-key")
     respond.side_effect = lambda _: _anthropic_response()
 
-    def classify(name):
-        return llm.complete(
-            "System", name, max_tokens=50, task="classify", search="Research."
+    perfumes = ("A", "B", "C", "D")
+
+    async def classify_together():
+        return await asyncio.gather(
+            *(
+                llm.complete(
+                    "System", name, max_tokens=50, task="classify", search="Research."
+                )
+                for name in perfumes
+            )
         )
 
-    perfumes = ("A", "B", "C", "D")
-    with ThreadPoolExecutor(max_workers=len(perfumes)) as workers:
-        results = list(workers.map(classify, perfumes))
+    results = asyncio.run(classify_together())
     assert results == [("Model response", [])] * len(perfumes)
     assert len(requests) == len(perfumes)
     for call in requests:
@@ -420,7 +425,7 @@ def test_configuration_errors_prevent_requests(
         monkeypatch.setenv(name, value)
 
     with pytest.raises(llm.LookupError, match=message) as exc:
-        llm.complete("System", "User", max_tokens=50, task="lookup")
+        _complete("System", "User", max_tokens=50, task="lookup")
     assert "hidden" not in str(exc.value)
     assert "private.example" not in str(exc.value)
     assert requests == []
@@ -437,5 +442,5 @@ def test_provider_failure_does_not_expose_body_or_credentials(monkeypatch, model
     )
 
     with pytest.raises(llm.LookupError, match="HTTP 401") as exc:
-        llm.complete("System", "User", max_tokens=50, task="enrich")
+        _complete("System", "User", max_tokens=50, task="enrich")
     assert "confidential" not in str(exc.value)

@@ -17,6 +17,7 @@ const enriched = {
   sourcing: "Calabria, Italy",
   proprietary_to: "",
   history: "",
+  needs_enrichment: false,
 };
 const captive = {
   id: 3,
@@ -29,6 +30,7 @@ const captive = {
   sourcing: "",
   proprietary_to: "Givaudan",
   history: "",
+  needs_enrichment: false,
 };
 const blank = {
   id: 2,
@@ -41,6 +43,7 @@ const blank = {
   sourcing: "",
   proprietary_to: "",
   history: "",
+  needs_enrichment: true,
 };
 
 it("renders description, origin chip, sourcing, and a proprietary badge", async () => {
@@ -58,15 +61,19 @@ it("renders description, origin chip, sourcing, and a proprietary badge", async 
   expect(screen.getByText(/patchouli fraction/i)).toBeInTheDocument(); // compounds line
 });
 
-it("shows an enrich button counting notes missing an origin", async () => {
-  vi.spyOn(api, "listNotes").mockResolvedValue([enriched, blank]);
+it("counts the server's enrichment candidates even when they have origins", async () => {
+  vi.spyOn(api, "listNotes").mockResolvedValue([
+    { ...enriched, needs_enrichment: true },
+    { ...captive, needs_enrichment: true },
+    { ...blank, needs_enrichment: false },
+  ]);
   render(
     <MemoryRouter>
       <Glossary />
     </MemoryRouter>,
   );
   await waitFor(() =>
-    expect(screen.getByText(/enrich notes \(1\)/i)).toBeInTheDocument(),
+    expect(screen.getByText(/enrich notes \(2\)/i)).toBeInTheDocument(),
   );
 });
 
@@ -76,11 +83,16 @@ it("enriches notes and re-fetches the list", async () => {
     .mockResolvedValueOnce([enriched, blank]) // initial
     .mockResolvedValueOnce([
       enriched,
-      { ...blank, origin: "synthetic", production: "Made from sclareol." },
+      {
+        ...blank,
+        origin: "synthetic",
+        production: "Made from sclareol.",
+        needs_enrichment: false,
+      },
     ]); // after enrich
   const gen = vi
     .spyOn(api, "enrichMissingNotes")
-    .mockResolvedValue({ updated: 1 });
+    .mockResolvedValue({ updated: 1, remaining: 0 });
 
   render(
     <MemoryRouter>

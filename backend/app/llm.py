@@ -1,6 +1,5 @@
 """Configure Pydantic AI for the fragrance model requests."""
 
-import asyncio
 import os
 from dataclasses import dataclass
 from functools import partial
@@ -195,7 +194,7 @@ async def _run(
         return text, _sources(result.response) if search_enabled else []
 
 
-def complete(
+async def complete(
     system: str,
     prompt: str,
     *,
@@ -203,7 +202,14 @@ def complete(
     task: Literal["lookup", "enrich", "classify"],
     search: str | None = None,
 ) -> tuple[str, list[str]]:
-    """Return model text and web URLs cited by the provider."""
+    """Run a request with the configured provider.
+
+    Returns:
+        Model text and web URLs cited by the provider.
+
+    Raises:
+        LookupError: Configuration, transport, or model output prevented completion.
+    """
     config = _config(task)
     search_enabled = search is not None and (
         (config.provider == "anthropic" and task in {"lookup", "classify"})
@@ -213,14 +219,12 @@ def complete(
         system += "\n\n" + (search if search_enabled else _NO_SEARCH)
 
     try:
-        return asyncio.run(
-            _run(
-                config,
-                system,
-                prompt,
-                max_tokens=max_tokens,
-                search_enabled=search_enabled,
-            )
+        return await _run(
+            config,
+            system,
+            prompt,
+            max_tokens=max_tokens,
+            search_enabled=search_enabled,
         )
     except ModelHTTPError as error:
         raise LookupError(

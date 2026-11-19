@@ -1,5 +1,6 @@
 from app import queries
 from app import repository as repo
+from app.db import make_sessionmaker
 from app.schemas import NoteInput, PerfumeCreate
 
 
@@ -53,7 +54,7 @@ def test_family_breakdown(session):
 
 def test_similarity_is_tier_aware_and_family_weighted(session):
     _seed(session)
-    pairs = queries.similar_pairs(session)
+    pairs = queries.similar_pairs(make_sessionmaker(session.bind))
     top = pairs[0]
     # Sauvage & Aventus share bergamot in the TOP tier and the Woody family.
     assert {top["a"], top["b"]} == {"Sauvage", "Aventus"}
@@ -110,10 +111,20 @@ def test_similarity_prefers_same_tier_same_family_over_diluted_base(session):
         ),
     )  # gives C a base overlap partner
 
-    pairs = queries.similar_pairs(session)
+    pairs = queries.similar_pairs(make_sessionmaker(session.bind))
     top = pairs[0]
     # The genuine top/family match (A↔B) beats any pairing that leans on base overlap.
     assert {top["a"], top["b"]} == {"A", "B"}
     a_b = next(p for p in pairs if {p["a"], p["b"]} == {"A", "B"})
     c_pairs = [p for p in pairs if "C" in (p["a"], p["b"])]
     assert all(a_b["score"] > cp["score"] for cp in c_pairs)
+
+
+def test_similarity_limits_equal_scores_in_stable_pair_order(session):
+    for name in ("Z", "B", "A"):
+        repo.create_perfume(session, PerfumeCreate(name=name, scent_families=["Fresh"]))
+    pairs = queries.similar_pairs(make_sessionmaker(session.bind), limit=2)
+    assert [(p["a"], p["b"], p["score"]) for p in pairs] == [
+        ("Z", "B", 0.25),
+        ("Z", "A", 0.25),
+    ]

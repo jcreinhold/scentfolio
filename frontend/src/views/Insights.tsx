@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   BarChart,
   Bar,
@@ -12,10 +12,10 @@ import {
   insightFamilies,
   insightSimilar,
   reclassifyPerfumes,
-  type SimilarPair,
   type NotesByTier,
   type NoteCount,
 } from "../api";
+import { errorMessage, useRequest } from "../lib/useRequest";
 
 const EMPTY_NOTES: NotesByTier = { top: [], heart: [], base: [] };
 const NOTE_TIERS: { key: keyof NotesByTier; label: string; fill: string }[] = [
@@ -24,32 +24,38 @@ const NOTE_TIERS: { key: keyof NotesByTier; label: string; fill: string }[] = [
   { key: "base", label: "Most common base notes", fill: "#5f6b48" },
 ];
 
+async function loadFamilyInsights(signal: AbortSignal) {
+  const [families, similar] = await Promise.all([
+    insightFamilies(signal),
+    insightSimilar(signal),
+  ]);
+  return { families, similar };
+}
+
 export default function Insights() {
-  const [notes, setNotes] = useState<NotesByTier>(EMPTY_NOTES);
-  const [families, setFamilies] = useState<{ family: string; count: number }[]>(
-    [],
-  );
-  const [similar, setSimilar] = useState<SimilarPair[]>([]);
+  const { result: noteResult } = useRequest(insightNotes);
+  const { result: familyResult, reload } = useRequest(loadFamilyInsights);
+  const notes = noteResult.status === "ready" ? noteResult.data : EMPTY_NOTES;
+  const { families, similar } =
+    familyResult.status === "ready"
+      ? familyResult.data
+      : { families: [], similar: [] };
   const [reclassifying, setReclassifying] = useState(false);
   const [error, setError] = useState("");
-
-  function loadFamilies() {
-    insightFamilies().then(setFamilies);
-  }
-  useEffect(() => {
-    insightNotes().then(setNotes);
-    loadFamilies();
-    insightSimilar().then(setSimilar);
-  }, []);
 
   async function reclassify() {
     setError("");
     setReclassifying(true);
     try {
-      await reclassifyPerfumes();
-      loadFamilies();
+      const { failed } = await reclassifyPerfumes();
+      if (failed) {
+        setError(
+          `Could not reclassify ${failed} ${failed === 1 ? "perfume" : "perfumes"}.`,
+        );
+      }
+      reload();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Reclassify failed");
+      setError(errorMessage(e, "Reclassify failed"));
     } finally {
       setReclassifying(false);
     }
@@ -65,31 +71,46 @@ export default function Insights() {
             What your collection reveals about your taste.
           </div>
         </div>
-        <button onClick={reclassify} disabled={reclassifying}>
+        <button
+          onClick={reclassify}
+          disabled={reclassifying || familyResult.status === "loading"}
+        >
           {reclassifying ? "Re-classifying…" : "Re-classify families"}
         </button>
       </div>
-      {error && <p style={{ color: "crimson" }}>{error}</p>}
+      {error && <p role="alert">{error}</p>}
+      {noteResult.status === "failed" && <p role="alert">{noteResult.error}</p>}
+      {familyResult.status === "failed" && (
+        <p role="alert">{familyResult.error}</p>
+      )}
+      {(noteResult.status === "loading" ||
+        familyResult.status === "loading") && (
+        <p role="status">Loading insights…</p>
+      )}
 
       {NOTE_TIERS.map(({ key, label, fill }) => (
         <div key={key}>
           <div className="label">{label}</div>
-          <NoteTierChart data={notes[key]} fill={fill} />
+          {noteResult.status === "ready" && (
+            <NoteTierChart data={notes[key]} fill={fill} />
+          )}
         </div>
       ))}
 
       <div className="label">Scent families</div>
-      <ResponsiveContainer width="100%" height={240}>
-        <BarChart data={families}>
-          <XAxis dataKey="family" tick={{ fontSize: 12, fill: "#938975" }} />
-          <YAxis
-            allowDecimals={false}
-            tick={{ fontSize: 12, fill: "#938975" }}
-          />
-          <Tooltip cursor={{ fill: "rgba(95,107,72,0.08)" }} />
-          <Bar dataKey="count" fill="#5f6b48" radius={[4, 4, 0, 0]} />
-        </BarChart>
-      </ResponsiveContainer>
+      {familyResult.status === "ready" && (
+        <ResponsiveContainer width="100%" height={240}>
+          <BarChart data={families}>
+            <XAxis dataKey="family" tick={{ fontSize: 12, fill: "#938975" }} />
+            <YAxis
+              allowDecimals={false}
+              tick={{ fontSize: 12, fill: "#938975" }}
+            />
+            <Tooltip cursor={{ fill: "rgba(95,107,72,0.08)" }} />
+            <Bar dataKey="count" fill="#5f6b48" radius={[4, 4, 0, 0]} />
+          </BarChart>
+        </ResponsiveContainer>
+      )}
 
       <div className="label">Most similar pairs</div>
       <ul className="similar-list">

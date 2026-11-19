@@ -1,15 +1,24 @@
-import os
+"""Open the database at startup and expose the session factory to routes."""
+
+from fastapi import Request
+from sqlalchemy.engine import Engine
+from sqlalchemy.orm import Session, sessionmaker
 
 from app import models
 from app.db import ensure_schema, make_engine, make_sessionmaker
 
-_DB_URL = os.environ.get("SCENTFOLIO_DB_URL", "sqlite:///scentfolio.db")
-_engine = make_engine(_DB_URL)
-models.Base.metadata.create_all(_engine)
-ensure_schema(_engine)  # additively add any columns missing from an older DB file
-_Session = make_sessionmaker(_engine)
+
+def open_database(url: str) -> tuple[Engine, sessionmaker[Session]]:
+    """Return an engine and session factory after the schema is ready."""
+    engine = make_engine(url)
+    try:
+        ensure_schema(engine, models.Base.metadata)
+        return engine, make_sessionmaker(engine)
+    except BaseException:
+        engine.dispose()
+        raise
 
 
-def get_session():
-    with _Session() as s:
-        yield s
+async def get_session_factory(request: Request) -> sessionmaker[Session]:
+    """Return the app's factory so each handler can open its own short session."""
+    return request.app.state.session_factory

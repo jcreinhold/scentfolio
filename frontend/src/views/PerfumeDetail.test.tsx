@@ -3,8 +3,9 @@ import { MemoryRouter, Routes, Route } from "react-router-dom";
 import { vi, it, expect } from "vitest";
 import PerfumeDetail from "./PerfumeDetail";
 import * as api from "../api";
+import type { Perfume } from "../types";
 
-const perfume = {
+const perfume: Perfume = {
   id: 1,
   name: "Aventus",
   status: "saved",
@@ -51,8 +52,14 @@ it("shows pyramid and saves impressions", async () => {
 });
 
 it("adds and removes fragrance family tags", async () => {
-  vi.spyOn(api, "getPerfume").mockResolvedValue(perfume as any);
-  const upd = vi.spyOn(api, "updatePerfume").mockResolvedValue(perfume as any);
+  vi.spyOn(api, "getPerfume").mockResolvedValue(perfume);
+  let stored = perfume;
+  const upd = vi
+    .spyOn(api, "updatePerfume")
+    .mockImplementation(async (_id, patch) => {
+      stored = { ...stored, ...patch };
+      return stored;
+    });
   render(
     <MemoryRouter initialEntries={["/perfume/1"]}>
       <Routes>
@@ -68,7 +75,12 @@ it("adds and removes fragrance family tags", async () => {
     expect(upd).toHaveBeenCalledWith(1, { scent_families: ["Woody"] }),
   );
 
-  // Add "Gourmand" via the picker -> appended to the (optimistically updated) list.
+  // Add "Gourmand" via the picker after the first change is confirmed.
+  await waitFor(() =>
+    expect(
+      screen.queryByLabelText("Remove Chypre family"),
+    ).not.toBeInTheDocument(),
+  );
   fireEvent.change(screen.getByLabelText(/add fragrance family/i), {
     target: { value: "Gourmand" },
   });

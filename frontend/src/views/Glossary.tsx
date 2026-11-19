@@ -1,42 +1,27 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { listNotes, enrichMissingNotes } from "../api";
-
-type NoteRow = {
-  id: number;
-  name: string;
-  family: string | null;
-  description: string;
-  origin: string;
-  production: string;
-  compounds: string;
-  sourcing: string;
-  proprietary_to: string;
-  history: string;
-};
+import { errorMessage, useRequest } from "../lib/useRequest";
 
 export default function Glossary() {
-  const [notes, setNotes] = useState<NoteRow[]>([]);
+  const { result, reload } = useRequest(listNotes);
   const [enriching, setEnriching] = useState(false);
   const [error, setError] = useState("");
-
-  function load() {
-    listNotes().then(setNotes);
-  }
-  useEffect(() => {
-    load();
-  }, []);
-
-  const missing = notes.filter((n) => !n.origin).length;
+  const notes = result.status === "ready" ? result.data : [];
+  const missing = notes.filter((note) => note.needs_enrichment).length;
 
   async function enrich() {
     setError("");
     setEnriching(true);
     try {
-      await enrichMissingNotes();
-      load();
+      const { failed } = await enrichMissingNotes();
+      if (failed)
+        setError(
+          `Could not enrich ${failed} ${failed === 1 ? "note" : "notes"}.`,
+        );
+      reload();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to enrich notes");
+      setError(errorMessage(e, "Failed to enrich notes"));
     } finally {
       setEnriching(false);
     }
@@ -49,7 +34,8 @@ export default function Glossary() {
           <div className="eyebrow">The Lexicon</div>
           <h2>Note Glossary</h2>
           <div className="page-sub">
-            {notes.length} notes across your collection.
+            {result.status === "ready" &&
+              `${notes.length} notes across your collection.`}
           </div>
         </div>
         {missing > 0 && (
@@ -58,7 +44,9 @@ export default function Glossary() {
           </button>
         )}
       </div>
-      {error && <p style={{ color: "crimson" }}>{error}</p>}
+      {error && <p role="alert">{error}</p>}
+      {result.status === "loading" && <p role="status">Loading notes…</p>}
+      {result.status === "failed" && <p role="alert">{result.error}</p>}
 
       <div className="grid">
         {notes.map((n) => (

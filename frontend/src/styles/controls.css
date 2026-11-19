@@ -2,6 +2,9 @@
 .page-head {
   margin-bottom: 28px;
 }
+.content p[role="alert"] {
+  color: crimson;
+}
 .eyebrow {
   font-family: var(--mono);
   font-size: 10px;

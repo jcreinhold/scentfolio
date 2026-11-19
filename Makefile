@@ -50,7 +50,7 @@ lint:
 test: test-backend test-frontend
 
 test-backend:
-	cd backend && SCENTFOLIO_DB_URL=sqlite:///:memory: uv run --locked pytest
+	cd backend && SCENTFOLIO_DB_URL=sqlite:///:memory: PYTHON_DOTENV_DISABLED=1 uv run --locked pytest
 
 test-frontend:
 	npm --prefix frontend test

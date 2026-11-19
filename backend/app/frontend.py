@@ -10,6 +10,7 @@ from starlette.exceptions import HTTPException
 
 
 def serve_frontend(app: FastAPI, directory: Path) -> None:
+    """Serve built assets and let the browser resolve non-API page routes."""
     files = StaticFiles(directory=directory)
 
     @app.exception_handler(HTTPStatus.NOT_FOUND)

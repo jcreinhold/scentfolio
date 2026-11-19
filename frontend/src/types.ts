@@ -1,5 +1,14 @@
 export type Tier = "top" | "heart" | "base";
 export type Format = "full" | "travel" | "sample";
+export type PerfumeStatus = "collection" | "saved";
+export type PerfumeSortKey =
+  "name" | "house" | "year" | "family" | "perfumer" | "notes";
+export type SortDirection = "asc" | "desc";
+
+export interface PerfumeSort {
+  key: PerfumeSortKey;
+  direction: SortDirection;
+}
 
 export interface Note {
   id: number;
@@ -10,7 +19,7 @@ export interface Note {
 export interface Perfume {
   id: number;
   name: string;
-  status: string;
+  status: PerfumeStatus;
   house: string;
   perfumer: string | null;
   year: number | null;
@@ -21,7 +30,15 @@ export interface Perfume {
   source_urls: string[];
   notes: Note[];
 }
+export type PerfumeDraft = Omit<Perfume, "id" | "notes"> & {
+  notes: Omit<Note, "id">[];
+};
+
+export type PerfumePatch = Partial<
+  Pick<Perfume, "my_impressions" | "formats" | "scent_families" | "status">
+>;
+
 export interface Draft {
-  perfume: Omit<Perfume, "id">;
+  perfume: PerfumeDraft;
   confidence: "high" | "medium" | "low";
 }

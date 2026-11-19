@@ -1,32 +1,20 @@
+"""Build fragrance prompts and validate the model output used by the app."""
+
 import json
 import re
-from typing import Literal
+from typing import Literal, get_args
 
-from dotenv import load_dotenv
 from pydantic import BaseModel, ValidationError
 
 from app.llm import LookupError, complete
-from app.schemas import PerfumeCreate
+from app.schemas import Family, PerfumeCreate
 
-load_dotenv()
-
-VALID_FAMILIES = {
-    "Citrus",
-    "Floral",
-    "Fruity",
-    "Green",
-    "Woody",
-    "Fresh",
-    "Aromatic",
-    "Fougere",
-    "Chypre",
-    "Gourmand",
-    "Leather",
-    "Other",
-}
+VALID_FAMILIES = frozenset(get_args(Family))
 
 
 class Draft(BaseModel):
+    """An unsaved fragrance entry paired with the lookup's confidence rating."""
+
     perfume: PerfumeCreate
     confidence: Literal["high", "medium", "low"] = "medium"
 
@@ -74,8 +62,11 @@ def _parse_json(raw_text: str):
 
 
 def _clean_families(value) -> list[str]:
-    """Keep only valid family names, de-duplicated, order preserved.
-    Accepts a list (preferred) or a single string (tolerant of older shapes)."""
+    """Accept a list or a single string from older model output.
+
+    Returns:
+        Valid family names in their original order, with duplicates removed.
+    """
     if isinstance(value, str):
         value = [value]
     if not isinstance(value, list):
@@ -88,7 +79,14 @@ def _clean_families(value) -> list[str]:
 
 
 def extract_draft(raw_text: str, *, source_urls: list[str] | None = None) -> Draft:
-    """Parse the model's JSON text into a validated Draft."""
+    """Parse the model's JSON text and attach provider citations when available.
+
+    Returns:
+        The validated draft, with low confidence when the provider has no citations.
+
+    Raises:
+        LookupError: The output cannot be parsed as a perfume draft.
+    """
     payload = _parse_json(raw_text)
     if not isinstance(payload, dict):
         raise LookupError("Model did not return a perfume object")
@@ -111,9 +109,13 @@ def extract_draft(raw_text: str, *, source_urls: list[str] | None = None) -> Dra
         raise LookupError("Model returned invalid perfume data") from exc
 
 
-def lookup(name: str) -> Draft:
-    """Look up a perfume with the configured model."""
-    text, sources = complete(
+async def lookup(name: str) -> Draft:
+    """Look up a perfume with the configured model.
+
+    Returns:
+        An unsaved draft with any citations supplied by the provider.
+    """
+    text, sources = await complete(
         SYSTEM_PROMPT,
         f"Look up the perfume: {name}",
         max_tokens=1500,
@@ -124,11 +126,6 @@ def lookup(name: str) -> Draft:
 
 
 VALID_ORIGINS = {"natural", "synthetic", "both"}
-
-# Bump when enrich_notes' output shape grows so existing notes get re-enriched.
-# v1: description, origin, production.  v2: + compounds, sourcing, proprietary_to.
-# v3: richer educational sourcing/compounds + history.
-ENRICH_VERSION = 3
 
 NOTE_ENRICH_PROMPT = (
     "You are a fragrance expert writing for an enthusiast who wants to LEARN about "
@@ -162,11 +159,18 @@ def _clean_str(entry: dict, key: str) -> str:
     return val.strip() if isinstance(val, str) else ""
 
 
-def enrich_notes(names: list[str]) -> dict[str, dict]:
-    """Generate glossary entries for the whole batch in a single call."""
+async def enrich_notes(names: list[str]) -> dict[str, dict[str, str]]:
+    """Generate glossary entries for the whole batch in a single call.
+
+    Returns:
+        Entries keyed by requested name. Missing entries are omitted.
+
+    Raises:
+        LookupError: The model output cannot be read as a glossary.
+    """
     if not names:
         return {}
-    text, _ = complete(
+    text, _ = await complete(
         NOTE_ENRICH_PROMPT,
         json.dumps(names),
         max_tokens=8000,
@@ -175,7 +179,7 @@ def enrich_notes(names: list[str]) -> dict[str, dict]:
     payload = _parse_json(text)
     if not isinstance(payload, dict):
         raise LookupError("Model did not return a note object")
-    out: dict[str, dict] = {}
+    out: dict[str, dict[str, str]] = {}
     for n in names:
         entry = payload.get(n)
         if not isinstance(entry, dict):
@@ -204,14 +208,18 @@ CLASSIFY_PROMPT = (
 )
 
 
-def classify_families(name: str, house: str, notes: list[str]) -> list[str]:
-    """Classify a perfume into its most prominent scent families."""
+async def classify_families(name: str, house: str, notes: list[str]) -> list[str]:
+    """Classify a perfume with the configured model.
+
+    Returns:
+        Recognized scent families in the order proposed by the model.
+    """
     prompt = (
         f"Perfume: {name}\nHouse: {house or 'unknown'}\n"
         f"Notes: {', '.join(notes) if notes else 'unknown'}\n"
         "Classify into scent families."
     )
-    text, _ = complete(
+    text, _ = await complete(
         CLASSIFY_PROMPT,
         prompt,
         max_tokens=800,

@@ -1,10 +1,8 @@
-import { useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import type { Perfume } from "../types";
-import { sortPerfumes, type SortKey, type SortDir } from "../lib/perfumeSort";
+import type { Perfume, PerfumeSort, PerfumeSortKey } from "../types";
 
 interface Column {
-  key: SortKey;
+  key: PerfumeSortKey;
   label: string;
   numeric?: boolean;
 }
@@ -17,34 +15,26 @@ const COLUMNS: Column[] = [
   { key: "perfumer", label: "Perfumer" },
 ];
 
-export default function PerfumeTable({ perfumes }: { perfumes: Perfume[] }) {
+export default function PerfumeTable({
+  perfumes,
+  sort,
+  onSort,
+}: {
+  perfumes: Perfume[];
+  sort: PerfumeSort;
+  onSort: (key: PerfumeSortKey) => void;
+}) {
   const nav = useNavigate();
-  const [sortKey, setSortKey] = useState<SortKey>("name");
-  const [sortDir, setSortDir] = useState<SortDir>("asc");
 
-  const rows = useMemo(
-    () => sortPerfumes(perfumes, sortKey, sortDir),
-    [perfumes, sortKey, sortDir],
-  );
-
-  function onSort(key: SortKey) {
-    if (key === sortKey) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
-    else {
-      setSortKey(key);
-      setSortDir("asc");
-    }
-  }
-
-  function ariaSort(key: SortKey): "ascending" | "descending" | "none" {
-    if (key !== sortKey) return "none";
-    return sortDir === "asc" ? "ascending" : "descending";
-  }
-
-  function SortHead({ col }: { col: Column }) {
-    const active = col.key === sortKey;
+  function sortHead(col: Column) {
+    const active = col.key === sort.key;
+    const ascending = sort.direction === "asc";
     return (
       <th
-        aria-sort={ariaSort(col.key)}
+        key={col.key}
+        aria-sort={
+          active ? (ascending ? "ascending" : "descending") : undefined
+        }
         className={col.numeric ? "num" : undefined}
       >
         <button
@@ -54,7 +44,7 @@ export default function PerfumeTable({ perfumes }: { perfumes: Perfume[] }) {
         >
           {col.label}
           <span className="th-arrow" aria-hidden>
-            {active ? (sortDir === "asc" ? "▲" : "▼") : ""}
+            {active ? (ascending ? "▲" : "▼") : ""}
           </span>
         </button>
       </th>
@@ -66,15 +56,13 @@ export default function PerfumeTable({ perfumes }: { perfumes: Perfume[] }) {
       <table className="perfume-table">
         <thead>
           <tr>
-            {COLUMNS.map((c) => (
-              <SortHead key={c.key} col={c} />
-            ))}
+            {COLUMNS.map(sortHead)}
             <th>Sizes</th>
-            <SortHead col={{ key: "notes", label: "Notes", numeric: true }} />
+            {sortHead({ key: "notes", label: "Notes", numeric: true })}
           </tr>
         </thead>
         <tbody>
-          {rows.map((p) => (
+          {perfumes.map((p) => (
             <tr key={p.id} onClick={() => nav(`/perfume/${p.id}`)}>
               <td className="pt-name">
                 <Link

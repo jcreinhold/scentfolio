@@ -1,114 +1,140 @@
-import type { Perfume, Draft } from "./types";
+import type {
+  Draft,
+  Perfume,
+  PerfumeDraft,
+  PerfumePatch,
+  PerfumeSort,
+  PerfumeStatus,
+} from "./types";
 
-async function getJSON<T>(url: string): Promise<T> {
-  const r = await fetch(url);
-  if (!r.ok) throw new Error(`GET ${url} failed: ${r.status}`);
-  return r.json();
+async function request(url: string, init?: RequestInit): Promise<Response> {
+  const response = await fetch(url, init);
+  if (!response.ok) {
+    const body = await response.json().catch(() => null);
+    const detail = typeof body?.detail === "string" ? body.detail : null;
+    throw new Error(detail ?? `Request failed (${response.status})`);
+  }
+  return response;
+}
+
+async function requestJSON<T>(url: string, init?: RequestInit): Promise<T> {
+  return (await request(url, init)).json();
+}
+
+function jsonBody(method: "POST" | "PATCH", body: object): RequestInit {
+  return {
+    method,
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(body),
+  };
+}
+
+interface PerfumeQuery {
+  q?: string;
+  family?: string;
+  fmt?: string;
+  status: PerfumeStatus;
+  sort?: PerfumeSort;
+  limit: number;
+  offset: number;
+}
+
+export interface PerfumePage {
+  perfumes: Perfume[];
+  total: number;
 }
 
 export async function listPerfumes(
-  filters: { q?: string; family?: string; fmt?: string; status?: string } = {},
-): Promise<Perfume[]> {
-  const params = new URLSearchParams();
-  if (filters.q) params.set("q", filters.q);
-  if (filters.family) params.set("family", filters.family);
-  if (filters.fmt) params.set("fmt", filters.fmt);
-  if (filters.status) params.set("status", filters.status);
-  const qs = params.toString();
-  return getJSON(`/api/perfumes${qs ? `?${qs}` : ""}`);
-}
-
-export const getPerfume = (id: number) =>
-  getJSON<Perfume>(`/api/perfumes/${id}`);
-
-export async function lookupPerfume(name: string): Promise<Draft> {
-  const r = await fetch("/api/lookup", {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ name }),
+  query: PerfumeQuery,
+  signal?: AbortSignal,
+): Promise<PerfumePage> {
+  const { q, family, fmt, status, sort, limit, offset } = query;
+  const params = new URLSearchParams({
+    status,
+    limit: String(limit),
+    offset: String(offset),
   });
-  if (!r.ok) throw new Error((await r.json()).detail ?? "Lookup failed");
-  return r.json();
+  if (q) params.set("q", q);
+  if (family) params.set("family", family);
+  if (fmt) params.set("fmt", fmt);
+  if (sort) {
+    params.set("sort", sort.key);
+    params.set("direction", sort.direction);
+  }
+
+  const response = await request(`/api/perfumes?${params}`, { signal });
+  const count = response.headers.get("X-Total-Count");
+  const total = Number(count);
+  if (count === null || !Number.isSafeInteger(total) || total < 0) {
+    throw new Error("The collection response is missing a valid total.");
+  }
+  return { perfumes: await response.json(), total };
 }
 
-export async function createPerfume(draft: Draft["perfume"]): Promise<Perfume> {
-  const r = await fetch("/api/perfumes", {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify(draft),
-  });
-  if (!r.ok) throw new Error("Create failed");
-  return r.json();
-}
+export const getPerfume = (id: number, signal?: AbortSignal) =>
+  requestJSON<Perfume>(`/api/perfumes/${id}`, { signal });
 
-export async function updatePerfume(
-  id: number,
-  patch: {
-    my_impressions?: string;
-    formats?: string[];
-    scent_families?: string[];
-    status?: string;
-  },
-): Promise<Perfume> {
-  const r = await fetch(`/api/perfumes/${id}`, {
-    method: "PATCH",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify(patch),
-  });
-  if (!r.ok) throw new Error("Update failed");
-  return r.json();
-}
+export const lookupPerfume = (name: string, signal?: AbortSignal) =>
+  requestJSON<Draft>("/api/lookup", { ...jsonBody("POST", { name }), signal });
+
+export const createPerfume = (draft: PerfumeDraft) =>
+  requestJSON<Perfume>("/api/perfumes", jsonBody("POST", draft));
+
+export const updatePerfume = (id: number, patch: PerfumePatch) =>
+  requestJSON<Perfume>(`/api/perfumes/${id}`, jsonBody("PATCH", patch));
 
 export async function deletePerfume(id: number): Promise<void> {
-  const r = await fetch(`/api/perfumes/${id}`, { method: "DELETE" });
-  if (!r.ok) throw new Error("Delete failed");
+  await request(`/api/perfumes/${id}`, { method: "DELETE" });
 }
 
-export async function reclassifyPerfumes(): Promise<{ updated: number }> {
-  const r = await fetch("/api/perfumes/reclassify", { method: "POST" });
-  if (!r.ok) throw new Error("Reclassify failed");
-  return r.json();
+interface MaintenanceResult {
+  updated: number;
+  failed?: number;
 }
+
+export const reclassifyPerfumes = () =>
+  requestJSON<MaintenanceResult>("/api/perfumes/reclassify", {
+    method: "POST",
+  });
 
 export const checkDuplicate = (name: string, house: string) =>
-  getJSON<{ duplicate: boolean; id: number | null }>(
-    `/api/perfumes/check-duplicate?name=${encodeURIComponent(name)}&house=${encodeURIComponent(house)}`,
+  requestJSON<{ duplicate: boolean; id: number | null }>(
+    `/api/perfumes/check-duplicate?${new URLSearchParams({ name, house })}`,
   );
 
-export const getNote = (name: string) =>
-  getJSON<{
-    name: string;
-    family: string | null;
-    description: string;
-    origin: string;
-    production: string;
-    compounds: string;
-    sourcing: string;
-    proprietary_to: string;
-    history: string;
-    perfumes: { id: number; name: string; house: string }[];
-  }>(`/api/notes/${encodeURIComponent(name)}`);
-export const listNotes = () =>
-  getJSON<
-    {
-      id: number;
-      name: string;
-      family: string | null;
-      description: string;
-      origin: string;
-      production: string;
-      compounds: string;
-      sourcing: string;
-      proprietary_to: string;
-      history: string;
-    }[]
-  >(`/api/notes`);
-
-export async function enrichMissingNotes(): Promise<{ updated: number }> {
-  const r = await fetch("/api/notes/enrich-missing", { method: "POST" });
-  if (!r.ok) throw new Error("Failed to enrich notes");
-  return r.json();
+interface NoteEntry {
+  name: string;
+  family: string | null;
+  description: string;
+  origin: string;
+  production: string;
+  compounds: string;
+  sourcing: string;
+  proprietary_to: string;
+  history: string;
 }
+
+interface NoteListItem extends NoteEntry {
+  id: number;
+  needs_enrichment: boolean;
+}
+
+interface NoteDetail extends NoteEntry {
+  perfumes: Pick<Perfume, "id" | "name" | "house">[];
+}
+
+export const getNote = (name: string, signal?: AbortSignal) =>
+  requestJSON<NoteDetail>(`/api/notes/${encodeURIComponent(name)}`, { signal });
+
+export const listNotes = (signal?: AbortSignal) =>
+  requestJSON<NoteListItem[]>("/api/notes", { signal });
+
+export const enrichMissingNotes = () =>
+  requestJSON<MaintenanceResult & { remaining: number }>(
+    "/api/notes/enrich-missing",
+    { method: "POST" },
+  );
+
 export interface NoteCount {
   note: string;
   count: number;
@@ -118,9 +144,13 @@ export interface NotesByTier {
   heart: NoteCount[];
   base: NoteCount[];
 }
-export const insightNotes = () => getJSON<NotesByTier>(`/api/insights/notes`);
-export const insightFamilies = () =>
-  getJSON<{ family: string; count: number }[]>(`/api/insights/families`);
+export const insightNotes = (signal?: AbortSignal) =>
+  requestJSON<NotesByTier>("/api/insights/notes", { signal });
+export const insightFamilies = (signal?: AbortSignal) =>
+  requestJSON<{ family: string; count: number }[]>("/api/insights/families", {
+    signal,
+  });
+
 export interface SimilarPair {
   a: string;
   b: string;
@@ -130,5 +160,5 @@ export interface SimilarPair {
   shared_heart: string[];
   shared_base: string[];
 }
-export const insightSimilar = () =>
-  getJSON<SimilarPair[]>(`/api/insights/similar`);
+export const insightSimilar = (signal?: AbortSignal) =>
+  requestJSON<SimilarPair[]>("/api/insights/similar", { signal });

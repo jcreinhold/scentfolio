@@ -1,10 +1,4 @@
-"""Regression test: the production dependency module must create its tables at
-import time. This failed once because `deps` ran create_all() before the models
-module was imported, so Base.metadata was empty and no tables were created.
-
-We run in a subprocess so it exercises a fresh import of `app.deps` in isolation
-(a same-process test wouldn't catch the ordering bug, since other test modules
-import app.models first and register the tables globally)."""
+"""Exercise fresh ASGI startup against empty and existing SQLite files."""
 
 import sqlite3
 import subprocess
@@ -14,25 +8,32 @@ from contextlib import closing
 from pathlib import Path
 
 
-def test_prod_engine_creates_tables_on_fresh_import(tmp_path):
+def test_startup_creates_tables_without_opening_database_on_import(tmp_path):
     db_file = tmp_path / "bootstrap.db"
     script = textwrap.dedent(f"""
         import os
+        from pathlib import Path
+
         os.environ["SCENTFOLIO_DB_URL"] = "sqlite:///{db_file}"
+        from fastapi.testclient import TestClient
         from sqlalchemy import inspect
-        from app.deps import _engine
-        names = set(inspect(_engine).get_table_names())
+        from app.main import app
+
+        assert not Path("{db_file}").exists()
+        with TestClient(app) as client:
+            assert client.get("/api/perfumes").json() == []
+            with app.state.session_factory() as session:
+                names = set(inspect(session.get_bind()).get_table_names())
         assert {{"perfumes", "notes", "perfume_notes"}} <= names, names
-        print("OK", sorted(names))
     """)
     result = subprocess.run(
         [sys.executable, "-c", script], capture_output=True, check=False, text=True
     )
     assert result.returncode == 0, result.stderr
-    assert "OK" in result.stdout
+    assert db_file.is_file()
 
 
-def test_app_selects_database_before_loading_provider_env(tmp_path, monkeypatch):
+def test_provider_env_loads_only_provider_settings(tmp_path, monkeypatch):
     env_file = tmp_path / ".env"
     env_file.write_text(
         "SCENTFOLIO_DB_URL=sqlite:///from-dotenv.db\n"
@@ -48,17 +49,18 @@ def test_app_selects_database_before_loading_provider_env(tmp_path, monkeypatch)
     monkeypatch.setenv("PYTHONPATH", str(Path(__file__).resolve().parents[1]))
     script = textwrap.dedent("""
         import os
-        import sys
-        from dotenv import main as dotenv_main
+        from pathlib import Path
 
-        dotenv_main.find_dotenv = lambda: sys.argv[1]
-        import app.main
-        from app.deps import _engine
-        assert _engine.url.database == "scentfolio.db"
-        assert os.environ["SCENTFOLIO_LLM_MODEL"] == "dotenv-test-model"
+        from fastapi.testclient import TestClient
+        from app import main
+
+        main.BACKEND_DIR = Path.cwd()
+        with TestClient(main.app):
+            assert os.environ["SCENTFOLIO_LLM_MODEL"] == "dotenv-test-model"
+            assert "SCENTFOLIO_DB_URL" not in os.environ
     """)
     result = subprocess.run(
-        [sys.executable, "-c", script, str(env_file)],
+        [sys.executable, "-c", script],
         cwd=tmp_path,
         capture_output=True,
         check=False,

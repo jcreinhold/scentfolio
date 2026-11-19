@@ -1,14 +1,16 @@
 import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { vi, it, expect, beforeEach } from "vitest";
-import BatchAdd from "./BatchAdd";
+import Add from "./Add";
 import * as api from "../api";
+import type { Draft } from "../types";
 
-function draftFor(name: string, sourceUrls: string[] = []) {
+function draftFor(name: string, sourceUrls: string[] = []): Draft {
   return {
     confidence: "high",
     perfume: {
       name,
+      status: "collection",
       house: "House",
       perfumer: null,
       year: null,
@@ -19,7 +21,16 @@ function draftFor(name: string, sourceUrls: string[] = []) {
       source_urls: sourceUrls,
       notes: [],
     },
-  } as any;
+  };
+}
+
+function renderBatchAdd() {
+  render(
+    <MemoryRouter>
+      <Add />
+    </MemoryRouter>,
+  );
+  fireEvent.click(screen.getByRole("tab", { name: "Batch add" }));
 }
 
 beforeEach(() => {
@@ -37,11 +48,7 @@ it("looks up every pasted name (de-duplicated) and lists results", async () => {
     .mockImplementation(async (n: string) =>
       draftFor(n, n === "Aventus" ? [sourceUrl] : []),
     );
-  render(
-    <MemoryRouter>
-      <BatchAdd />
-    </MemoryRouter>,
-  );
+  renderBatchAdd();
 
   fireEvent.change(screen.getByPlaceholderText(/one perfume name per line/i), {
     target: { value: "Aventus\nSauvage\nAventus\n\n" },
@@ -63,12 +70,11 @@ it("saves only the kept rows and reports the count", async () => {
   vi.spyOn(api, "lookupPerfume").mockImplementation(async (n: string) =>
     draftFor(n),
   );
-  const create = vi.spyOn(api, "createPerfume").mockResolvedValue({} as any);
-  render(
-    <MemoryRouter>
-      <BatchAdd />
-    </MemoryRouter>,
-  );
+  const create = vi
+    .spyOn(api, "createPerfume")
+    .mockImplementation(async (perfume) => ({ ...perfume, id: 1, notes: [] }));
+  renderBatchAdd();
+  fireEvent.click(screen.getByRole("tab", { name: "Saved" }));
 
   fireEvent.change(screen.getByPlaceholderText(/one perfume name per line/i), {
     target: { value: "Aventus\nSauvage" },
@@ -84,6 +90,13 @@ it("saves only the kept rows and reports the count", async () => {
     expect(screen.getByText(/added 1 perfume/i)).toBeInTheDocument(),
   );
   expect(create).toHaveBeenCalledTimes(1);
+  expect(create).toHaveBeenCalledWith(
+    expect.objectContaining({ status: "saved" }),
+  );
+  expect(screen.getByRole("link", { name: "View Saved" })).toHaveAttribute(
+    "href",
+    "/saved",
+  );
 });
 
 it("shows failed lookups in error state and does not save them", async () => {
@@ -91,12 +104,10 @@ it("shows failed lookups in error state and does not save them", async () => {
     if (n === "Bogus") throw new Error("Lookup failed: not found");
     return draftFor(n);
   });
-  const create = vi.spyOn(api, "createPerfume").mockResolvedValue({} as any);
-  render(
-    <MemoryRouter>
-      <BatchAdd />
-    </MemoryRouter>,
-  );
+  const create = vi
+    .spyOn(api, "createPerfume")
+    .mockImplementation(async (perfume) => ({ ...perfume, id: 1, notes: [] }));
+  renderBatchAdd();
 
   fireEvent.change(screen.getByPlaceholderText(/one perfume name per line/i), {
     target: { value: "Aventus\nBogus" },
@@ -116,11 +127,7 @@ it("flags duplicates found in the collection", async () => {
     draftFor(n),
   );
   vi.spyOn(api, "checkDuplicate").mockResolvedValue({ duplicate: true, id: 1 });
-  render(
-    <MemoryRouter>
-      <BatchAdd />
-    </MemoryRouter>,
-  );
+  renderBatchAdd();
 
   fireEvent.change(screen.getByPlaceholderText(/one perfume name per line/i), {
     target: { value: "Aventus" },

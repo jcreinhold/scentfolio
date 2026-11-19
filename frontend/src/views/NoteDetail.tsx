@@ -1,16 +1,18 @@
-import { useEffect, useState } from "react";
+import { useCallback } from "react";
 import { useParams, Link } from "react-router-dom";
 import { getNote } from "../api";
-
-type NoteData = Awaited<ReturnType<typeof getNote>>;
+import { useRequest } from "../lib/useRequest";
 
 export default function NoteDetail() {
-  const { name } = useParams();
-  const [data, setData] = useState<NoteData | null>(null);
-  useEffect(() => {
-    if (name) getNote(name).then(setData);
-  }, [name]);
-  if (!data) return <div>Loading…</div>;
+  const { name = "" } = useParams();
+  const load = useCallback(
+    (signal: AbortSignal) => getNote(name, signal),
+    [name],
+  );
+  const { result } = useRequest(load);
+  if (result.status === "loading") return <div role="status">Loading…</div>;
+  if (result.status === "failed") return <p role="alert">{result.error}</p>;
+  const data = result.data;
   return (
     <div>
       <h2>{data.name}</h2>

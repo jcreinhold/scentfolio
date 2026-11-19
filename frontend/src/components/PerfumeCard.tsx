@@ -15,10 +15,12 @@ const FORMATS: { fmt: Format; label: string }[] = [
 
 export default function PerfumeCard({
   p,
+  pending = false,
   onDelete,
   onSetFormats,
 }: {
   p: Perfume;
+  pending?: boolean;
   onDelete?: (id: number) => void;
   onSetFormats?: (id: number, formats: string[]) => void;
 }) {
@@ -46,6 +48,7 @@ export default function PerfumeCard({
             className="card-remove"
             aria-label={`Remove ${p.name}`}
             title="Remove from collection"
+            disabled={pending}
             onClick={handleDelete}
           >
             ✕
@@ -99,6 +102,7 @@ export default function PerfumeCard({
                 type="button"
                 className={`fmt-toggle${on ? " on" : ""}`}
                 aria-pressed={on}
+                disabled={pending}
                 aria-label={`${on ? "Remove" : "Add"} ${label} size for ${p.name}`}
                 onClick={(e) => toggleFormat(e, fmt)}
               >

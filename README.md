@@ -80,4 +80,5 @@ Use `make format` to apply formatting, or `make test-backend` and
 `make test-frontend` to run the suites individually. The backend tests use an
 in-memory SQLite database and mock the AI calls.
 
-See the [repo guide](docs/README.md) for where to make changes.
+See the [repo guide](docs/README.md) for where to make changes and the
+[architecture](docs/architecture.md) for runtime and capacity decisions.

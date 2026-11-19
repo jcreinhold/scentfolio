@@ -1,54 +1,66 @@
-import { useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { getPerfume, updatePerfume, deletePerfume } from "../api";
 import SourceLinks from "../components/SourceLinks";
-import type { Perfume, Tier } from "../types";
+import type { Perfume, PerfumePatch, Tier } from "../types";
 import { FAMILIES } from "../lib/families";
+import { errorMessage, useRequest } from "../lib/useRequest";
 
 const TIERS: Tier[] = ["top", "heart", "base"];
 
 export default function PerfumeDetail() {
   const { id } = useParams();
+  return <PerfumeRecord key={id} id={Number(id)} />;
+}
+
+function PerfumeRecord({ id }: { id: number }) {
   const nav = useNavigate();
-  const [p, setP] = useState<Perfume | null>(null);
-  const [impressions, setImpressions] = useState("");
+  const load = useCallback(
+    (signal: AbortSignal) => getPerfume(id, signal),
+    [id],
+  );
+  const { result } = useRequest(load);
+  const [saved, setSaved] = useState<Perfume | null>(null);
+  const [editedImpressions, setEditedImpressions] = useState<string | null>(
+    null,
+  );
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
 
-  useEffect(() => {
-    getPerfume(Number(id)).then((data) => {
-      setP(data);
-      setImpressions(data.my_impressions);
-    });
-  }, [id]);
+  if (result.status === "loading") return <div role="status">Loading…</div>;
+  if (result.status === "failed") return <p role="alert">{result.error}</p>;
 
-  async function remove() {
-    if (p && window.confirm(`Remove ${p.name} from your collection?`)) {
-      await deletePerfume(p.id);
-      nav("/");
-    }
-  }
-
-  // Optimistically update the family tags; revert on failure.
-  async function setFamilies(families: string[]) {
-    if (!p) return;
-    const prev = p;
-    setP({ ...p, scent_families: families });
-    try {
-      await updatePerfume(p.id, { scent_families: families });
-    } catch {
-      setP(prev);
-    }
-  }
-
-  async function moveStatus() {
-    if (!p) return;
-    const next = p.status === "saved" ? "collection" : "saved";
-    const updated = await updatePerfume(p.id, { status: next });
-    setP({ ...p, status: updated.status });
-  }
-
-  if (!p) return <div>Loading…</div>;
-
+  const p = saved ?? result.data;
+  const impressions = editedImpressions ?? p.my_impressions;
   const available = FAMILIES.filter((f) => !p.scent_families.includes(f));
+
+  async function change(save: () => Promise<void>) {
+    if (saving) return;
+    setSaving(true);
+    setError("");
+    try {
+      await save();
+    } catch (error) {
+      setError(errorMessage(error, "Could not save the perfume change."));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function patch(patch: PerfumePatch) {
+    return change(async () => {
+      setSaved(await updatePerfume(id, patch));
+    });
+  }
+
+  function remove() {
+    if (window.confirm(`Remove ${p.name} from your collection?`)) {
+      return change(async () => {
+        await deletePerfume(id);
+        nav("/");
+      });
+    }
+  }
 
   return (
     <div>
@@ -72,8 +84,11 @@ export default function PerfumeDetail() {
                 type="button"
                 className="family-tag-remove"
                 aria-label={`Remove ${f} family`}
+                disabled={saving}
                 onClick={() =>
-                  setFamilies(p.scent_families.filter((x) => x !== f))
+                  patch({
+                    scent_families: p.scent_families.filter((x) => x !== f),
+                  })
                 }
               >
                 ×
@@ -85,9 +100,12 @@ export default function PerfumeDetail() {
               className="family-add"
               aria-label="Add fragrance family"
               value=""
+              disabled={saving}
               onChange={(e) => {
                 if (e.target.value)
-                  setFamilies([...p.scent_families, e.target.value]);
+                  patch({
+                    scent_families: [...p.scent_families, e.target.value],
+                  });
               }}
             >
               <option value="">+ Add family</option>
@@ -101,6 +119,7 @@ export default function PerfumeDetail() {
         </div>
       </div>
 
+      {error && <p role="alert">{error}</p>}
       <div className="label">Note pyramid</div>
       <div className="pyramid">
         {TIERS.map((tier) => (
@@ -141,10 +160,11 @@ export default function PerfumeDetail() {
         aria-label="my impressions"
         className="search"
         value={impressions}
-        onChange={(e) => setImpressions(e.target.value)}
+        onChange={(e) => setEditedImpressions(e.target.value)}
       />
       <button
-        onClick={() => updatePerfume(p.id, { my_impressions: impressions })}
+        onClick={() => patch({ my_impressions: impressions })}
+        disabled={saving}
         style={{ marginTop: 8 }}
       >
         Save impressions
@@ -160,10 +180,15 @@ export default function PerfumeDetail() {
           flexWrap: "wrap",
         }}
       >
-        <button onClick={moveStatus}>
+        <button
+          disabled={saving}
+          onClick={() =>
+            patch({ status: p.status === "saved" ? "collection" : "saved" })
+          }
+        >
           {p.status === "saved" ? "Move to collection" : "Move to saved"}
         </button>
-        <button className="btn-danger" onClick={remove}>
+        <button className="btn-danger" onClick={remove} disabled={saving}>
           Remove
         </button>
       </div>

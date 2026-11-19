@@ -2,24 +2,27 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { lookupPerfume, createPerfume, checkDuplicate } from "../api";
 import SourceLinks from "../components/SourceLinks";
-import type { Draft, Format } from "../types";
-import BatchAdd from "./BatchAdd";
+import type { Draft, Format, PerfumeDraft, PerfumeStatus } from "../types";
+import { errorMessage } from "../lib/useRequest";
+import BatchAdd, { type AddAction } from "./BatchAdd";
 
 const FORMATS: Format[] = ["full", "travel", "sample"];
 
 export default function Add() {
   const [mode, setMode] = useState<"single" | "batch">("single");
-  const [dest, setDest] = useState<"collection" | "saved">("collection");
+  const [dest, setDest] = useState<PerfumeStatus>("collection");
   const [name, setName] = useState("");
   const [draft, setDraft] = useState<Draft | null>(null);
   const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [action, setAction] = useState<AddAction>(null);
   const [dupWarning, setDupWarning] = useState(false);
   const nav = useNavigate();
 
   async function doLookup() {
+    if (action || !name) return;
     setError("");
-    setLoading(true);
+    setAction("lookup");
+    setDraft(null);
     setDupWarning(false);
     try {
       const d = await lookupPerfume(name);
@@ -30,14 +33,17 @@ export default function Add() {
       } catch {
         setDupWarning(false);
       }
-    } catch (e: any) {
-      setError(e.message);
+    } catch (error) {
+      setError(errorMessage(error, "Lookup failed"));
     } finally {
-      setLoading(false);
+      setAction(null);
     }
   }
 
-  function patch(field: string, value: any) {
+  function patch<K extends keyof PerfumeDraft>(
+    field: K,
+    value: PerfumeDraft[K],
+  ) {
     if (!draft) return;
     setDraft({ ...draft, perfume: { ...draft.perfume, [field]: value } });
   }
@@ -54,12 +60,16 @@ export default function Add() {
   }
 
   async function save() {
-    if (!draft) return;
+    if (!draft || action) return;
+    setError("");
+    setAction("save");
     try {
       const created = await createPerfume({ ...draft.perfume, status: dest });
       nav(`/perfume/${created.id}`);
-    } catch (e: any) {
-      setError(e.message);
+    } catch (error) {
+      setError(errorMessage(error, "Save failed"));
+    } finally {
+      setAction(null);
     }
   }
 
@@ -79,7 +89,7 @@ export default function Add() {
           <button
             role="tab"
             aria-selected={dest === "collection"}
-            disabled={dest === "collection"}
+            disabled={dest === "collection" || action === "save"}
             onClick={() => setDest("collection")}
           >
             Collection
@@ -87,7 +97,7 @@ export default function Add() {
           <button
             role="tab"
             aria-selected={dest === "saved"}
-            disabled={dest === "saved"}
+            disabled={dest === "saved" || action === "save"}
             onClick={() => setDest("saved")}
           >
             Saved
@@ -99,7 +109,7 @@ export default function Add() {
         <button
           role="tab"
           aria-selected={mode === "single"}
-          disabled={mode === "single"}
+          disabled={mode === "single" || action !== null}
           onClick={() => setMode("single")}
         >
           One at a time
@@ -107,7 +117,7 @@ export default function Add() {
         <button
           role="tab"
           aria-selected={mode === "batch"}
-          disabled={mode === "batch"}
+          disabled={mode === "batch" || action !== null}
           onClick={() => setMode("batch")}
         >
           Batch add
@@ -115,7 +125,7 @@ export default function Add() {
       </div>
 
       {mode === "batch" ? (
-        <BatchAdd status={dest} />
+        <BatchAdd status={dest} action={action} onAction={setAction} />
       ) : (
         <>
           <div style={{ display: "flex", gap: 8 }}>
@@ -123,17 +133,14 @@ export default function Add() {
               className="search"
               placeholder="Add a perfume by name…"
               value={name}
+              disabled={action === "lookup"}
               onChange={(e) => setName(e.target.value)}
             />
-            <button onClick={doLookup} disabled={loading || !name}>
-              {loading ? "Searching…" : "Look up"}
+            <button onClick={doLookup} disabled={action !== null || !name}>
+              {action === "lookup" ? "Searching…" : "Look up"}
             </button>
           </div>
-          {error && (
-            <p style={{ color: "crimson" }}>
-              {error} — you can still add it manually below.
-            </p>
-          )}
+          {error && <p role="alert">{error}</p>}
 
           {draft && (
             <div>
@@ -184,8 +191,16 @@ export default function Add() {
                 ))}
               </div>
               <SourceLinks urls={draft.perfume.source_urls} />
-              <button onClick={save} style={{ marginTop: 12 }}>
-                {dest === "saved" ? "Save to Saved" : "Save to collection"}
+              <button
+                onClick={save}
+                disabled={action !== null}
+                style={{ marginTop: 12 }}
+              >
+                {action === "save"
+                  ? "Saving…"
+                  : dest === "saved"
+                    ? "Save to Saved"
+                    : "Save to collection"}
               </button>
             </div>
           )}

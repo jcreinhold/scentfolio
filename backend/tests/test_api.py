@@ -3,23 +3,13 @@ from http import HTTPStatus
 import pytest
 from fastapi.testclient import TestClient
 
-from app.db import Base, make_engine, make_sessionmaker
-from app.main import app, get_session
+from app.main import create_app
 
 
 @pytest.fixture
 def client():
-    engine = make_engine("sqlite:///:memory:")
-    Base.metadata.create_all(engine)
-    Session = make_sessionmaker(engine)
-
-    def _override():
-        with Session() as s:
-            yield s
-
-    app.dependency_overrides[get_session] = _override
-    yield TestClient(app)
-    app.dependency_overrides.clear()
+    with TestClient(create_app("sqlite:///:memory:")) as test_client:
+        yield test_client
 
 
 def _create(client, name="Sauvage", house="Dior", families=("Fresh",)):
@@ -50,6 +40,47 @@ def test_search_by_note(client):
     assert [p["name"] for p in r.json()] == ["Sauvage"]
 
 
+def test_collection_paging_reports_matching_count_and_orders_before_slice(client):
+    for name in ("Zeta", "Alpha", "Mid"):
+        _create(client, name=name)
+    _create(client, name="Unmatched", families=("Green",))
+
+    page = client.get(
+        "/api/perfumes",
+        params={"limit": 1, "offset": 1, "sort": "name", "family": "Fresh"},
+    )
+    assert page.status_code == HTTPStatus.OK
+    assert page.headers["X-Total-Count"] == "3"
+    assert [perfume["name"] for perfume in page.json()] == ["Mid"]
+
+
+def test_unknown_note_returns_not_found(client):
+    response = client.get("/api/notes/missing")
+    assert response.status_code == HTTPStatus.NOT_FOUND
+    assert response.json() == {"detail": "Note not found"}
+
+
+def test_note_name_with_slash_round_trips(client):
+    created = client.post(
+        "/api/perfumes",
+        json={"name": "Accord", "notes": [{"name": "tea/rose", "tier": "heart"}]},
+    )
+    assert created.status_code == HTTPStatus.CREATED
+    response = client.get("/api/notes/tea%2Frose")
+    assert response.status_code == HTTPStatus.OK
+    assert response.json()["name"] == "tea/rose"
+
+
+def test_cross_origin_browser_write_cannot_change_collection(client):
+    response = client.post(
+        "/api/perfumes",
+        headers={"Origin": "https://other.example"},
+        json={"name": "Outside the collection"},
+    )
+    assert response.status_code == HTTPStatus.FORBIDDEN
+    assert client.get("/api/perfumes").json() == []
+
+
 def test_export_csv(client):
     _create(client, name="Owned", families=("Fresh", "Woody"))
     client.post(
@@ -77,6 +108,13 @@ def test_export_csv(client):
     # status filter narrows the export
     saved = client.get("/api/perfumes/export.csv", params={"status": "saved"}).text
     assert "Wanted" in saved and "Owned" not in saved
+
+
+def test_csv_neutralizes_formula_like_text(client):
+    _create(client, name="=1")
+    response = client.get("/api/perfumes/export.csv")
+    assert response.status_code == HTTPStatus.OK
+    assert response.text.splitlines()[1].startswith("'=1,collection,")
 
 
 def test_status_filter_and_move(client):

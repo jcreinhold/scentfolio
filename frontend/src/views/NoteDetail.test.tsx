@@ -34,3 +34,17 @@ it("shows note info and perfumes containing it", async () => {
   ).toBeInTheDocument(); // history
   expect(screen.getByText(/Sauvage/)).toBeInTheDocument();
 });
+
+it("shows the missing-note error instead of staying in the loading state", async () => {
+  vi.spyOn(api, "getNote").mockRejectedValue(new Error("Note not found"));
+  render(
+    <MemoryRouter initialEntries={["/note/unknown"]}>
+      <Routes>
+        <Route path="/note/:name" element={<NoteDetail />} />
+      </Routes>
+    </MemoryRouter>,
+  );
+  expect(screen.getByRole("status")).toHaveTextContent("Loading");
+  expect(await screen.findByRole("alert")).toHaveTextContent("Note not found");
+  expect(screen.queryByRole("status")).not.toBeInTheDocument();
+});

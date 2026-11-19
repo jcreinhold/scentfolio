@@ -1,3 +1,5 @@
+"""Map fragrances, shared glossary notes, and their tier links to storage."""
+
 from datetime import UTC, datetime
 
 from sqlalchemy import DateTime, ForeignKey, Integer, String, Text
@@ -11,6 +13,8 @@ def _now():
 
 
 class Perfume(Base):
+    """A stored fragrance in either the collection or the saved list."""
+
     __tablename__ = "perfumes"
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(200))
@@ -32,6 +36,8 @@ class Perfume(Base):
 
 
 class Note(Base):
+    """A glossary entry shared by every perfume that uses its normalized name."""
+
     __tablename__ = "notes"
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(120), unique=True)
@@ -60,9 +66,13 @@ class Note(Base):
 
 
 class PerfumeNote(Base):
+    """Link a perfume to a note once per tier, allowing reuse across tiers."""
+
     __tablename__ = "perfume_notes"
     perfume_id: Mapped[int] = mapped_column(ForeignKey("perfumes.id"), primary_key=True)
-    note_id: Mapped[int] = mapped_column(ForeignKey("notes.id"), primary_key=True)
+    note_id: Mapped[int] = mapped_column(
+        ForeignKey("notes.id"), primary_key=True, index=True
+    )
     tier: Mapped[str] = mapped_column(String(10), primary_key=True)
     perfume: Mapped[Perfume] = relationship(back_populates="perfume_notes")
     note: Mapped[Note] = relationship(back_populates="perfume_notes")

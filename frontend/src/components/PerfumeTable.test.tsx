@@ -1,8 +1,8 @@
 import { render, screen, fireEvent, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
-import { it, expect } from "vitest";
+import { it, expect, vi } from "vitest";
 import PerfumeTable from "./PerfumeTable";
-import type { Perfume } from "../types";
+import type { Perfume, PerfumeSort } from "../types";
 
 function p(over: Partial<Perfume>): Perfume {
   return {
@@ -45,6 +45,7 @@ const list: Perfume[] = [
     ],
   }),
 ];
+const nameAscending: PerfumeSort = { key: "name", direction: "asc" };
 
 function rowNames() {
   return screen
@@ -56,7 +57,7 @@ function rowNames() {
 it("renders a row per perfume with sizes and note counts", () => {
   render(
     <MemoryRouter>
-      <PerfumeTable perfumes={list} />
+      <PerfumeTable perfumes={list} sort={nameAscending} onSort={() => {}} />
     </MemoryRouter>,
   );
   expect(screen.getByText("Sauvage")).toBeInTheDocument();
@@ -67,49 +68,33 @@ it("renders a row per perfume with sizes and note counts", () => {
   expect(screen.getByText("travel")).toBeInTheDocument();
 });
 
-it("defaults to name-ascending and re-sorts when a header is clicked", () => {
+it("keeps server order and sends header clicks to its caller", () => {
+  const onSort = vi.fn();
   render(
     <MemoryRouter>
-      <PerfumeTable perfumes={list} />
+      <PerfumeTable
+        perfumes={list}
+        sort={{ key: "perfumer", direction: "desc" }}
+        onSort={onSort}
+      />
     </MemoryRouter>,
   );
-  expect(rowNames()).toEqual(["Aventus", "Sauvage"]); // name asc
-
-  fireEvent.click(screen.getByRole("button", { name: /year/i }));
-  expect(rowNames()).toEqual(["Aventus", "Sauvage"]); // year asc: 2010, 2015
-
-  fireEvent.click(screen.getByRole("button", { name: /year/i })); // toggle desc
   expect(rowNames()).toEqual(["Sauvage", "Aventus"]);
+  expect(
+    screen.getByRole("columnheader", { name: "Perfumer" }),
+  ).toHaveAttribute("aria-sort", "descending");
+  fireEvent.click(screen.getByRole("button", { name: /year/i }));
+  expect(onSort).toHaveBeenCalledWith("year");
 });
 
 it("links each name to its detail page", () => {
   render(
     <MemoryRouter>
-      <PerfumeTable perfumes={list} />
+      <PerfumeTable perfumes={list} sort={nameAscending} onSort={() => {}} />
     </MemoryRouter>,
   );
   expect(screen.getByRole("link", { name: "Aventus" })).toHaveAttribute(
     "href",
     "/perfume/2",
   );
-});
-
-it("sorts perfumers by collection frequency", () => {
-  const withPerfumers: Perfume[] = [
-    p({ id: 1, name: "Solo", perfumer: "Lone Nose" }),
-    p({ id: 2, name: "Twin A", perfumer: "Alberto Morillas" }),
-    p({ id: 3, name: "Twin B", perfumer: "Alberto Morillas" }),
-  ];
-  render(
-    <MemoryRouter>
-      <PerfumeTable perfumes={withPerfumers} />
-    </MemoryRouter>,
-  );
-  expect(screen.getByText("Lone Nose")).toBeInTheDocument();
-
-  fireEvent.click(screen.getByRole("button", { name: /perfumer/i })); // asc: least-owned first
-  expect(rowNames()).toEqual(["Solo", "Twin A", "Twin B"]);
-
-  fireEvent.click(screen.getByRole("button", { name: /perfumer/i })); // desc: most-owned first
-  expect(rowNames()).toEqual(["Twin A", "Twin B", "Solo"]);
 });

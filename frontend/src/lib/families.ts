@@ -1,5 +1,5 @@
 // The scent-family vocabulary. Mirrors the backend `Family` literal
-// (schemas.py) / VALID_FAMILIES (agent.py) — keep the three in sync.
+// in backend/app/schemas.py.
 export const FAMILIES = [
   "Citrus",
   "Floral",
