@@ -31,10 +31,11 @@ class LookupError(Exception):
 
 _ANTHROPIC_BASE_URL = "https://api.anthropic.com"
 _OPENAI_BASE_URL = "https://api.openai.com/v1"
+_ANTHROPIC_OPUS = "claude-opus-5-5"
 _ANTHROPIC_MODELS = {
-    "lookup": "claude-opus-4-8",
-    "enrich": "claude-haiku-4-5-20251001",
-    "classify": "claude-opus-4-8",
+    "lookup": _ANTHROPIC_OPUS,
+    "enrich": "claude-haiku-5-5",
+    "classify": _ANTHROPIC_OPUS,
 }
 _NO_SEARCH = "Web search is unavailable. Omit unknown details."
 _UNREADABLE = "The language model returned an unreadable response."
@@ -173,6 +174,14 @@ async def _run(
         settings = {"max_tokens": max_tokens}
         if config.provider == "openai":
             settings["openai_store"] = False
+        elif (
+            config.provider == "anthropic"
+            and config.model in _ANTHROPIC_MODELS.values()
+        ):
+            settings["anthropic_effort"] = "low"
+            if config.model == _ANTHROPIC_OPUS:
+                # Opus 5.5 shares this allowance between mandatory thinking and text.
+                settings["max_tokens"] = max(max_tokens, 4096)
         agent = Agent(
             _model(config, http_client),
             instructions=system,

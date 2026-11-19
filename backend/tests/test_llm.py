@@ -41,18 +41,19 @@ def model_http(monkeypatch):
     return requests, respond
 
 
-def _anthropic_response(*, citations=()):
+def _anthropic_response(*, model="claude-opus-5-5", citations=()):
     return Response(
         200,
         json={
             "id": "msg_test",
             "type": "message",
             "role": "assistant",
-            "model": "claude-opus-4-8",
+            "model": model,
             "stop_reason": "end_turn",
             "stop_sequence": None,
             "content": [
-                {"type": "text", "text": "Model response", "citations": citations}
+                {"type": "thinking", "thinking": "", "signature": "test"},
+                {"type": "text", "text": "Model response", "citations": citations},
             ],
             "usage": {"input_tokens": 10, "output_tokens": 5},
         },
@@ -150,8 +151,9 @@ def test_anthropic_default_uses_legacy_key_and_native_search(monkeypatch, model_
     assert call.headers["authorization"] == "Bearer legacy-key"
     assert call.headers["x-official-header"] == "retained"
     body = json.loads(call.content)
-    assert body["model"] == "claude-opus-4-8"
-    assert body["max_tokens"] == 50
+    assert body["model"] == "claude-opus-5-5"
+    assert body["max_tokens"] == 4096
+    assert body["output_config"]["effort"] == "low"
     assert body["tools"][0]["type"].startswith("web_search_")
     assert "Research the perfume." in str(body)
 
@@ -186,10 +188,10 @@ def test_anthropic_enrichment_preserves_default_model_without_search(
 ):
     requests, respond = model_http
     monkeypatch.setenv("SCENTFOLIO_LLM_API_KEY", "configured-key")
-    respond.side_effect = lambda _: _anthropic_response()
+    respond.side_effect = lambda _: _anthropic_response(model="claude-haiku-5-5")
 
     assert llm.complete(
-        "System", "User", max_tokens=50, task="enrich", search="Research."
+        "System", "User", max_tokens=8000, task="enrich", search="Research."
     ) == (
         "Model response",
         [],
@@ -197,8 +199,28 @@ def test_anthropic_enrichment_preserves_default_model_without_search(
     (call,) = requests
     assert call.headers["authorization"] == "Bearer configured-key"
     body = json.loads(call.content)
-    assert body["model"] == "claude-haiku-4-5-20251001"
+    assert body["model"] == "claude-haiku-5-5"
+    assert body["max_tokens"] == 8000
+    assert body["output_config"]["effort"] == "low"
     assert not body.get("tools")
+
+
+def test_anthropic_model_override_keeps_requested_budget(monkeypatch, model_http):
+    requests, respond = model_http
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")
+    monkeypatch.setenv("SCENTFOLIO_LLM_MODEL", "claude-opus-4-8")
+    respond.side_effect = lambda _: _anthropic_response(model="claude-opus-4-8")
+
+    assert llm.complete("System", "User", max_tokens=1500, task="lookup") == (
+        "Model response",
+        [],
+    )
+
+    (call,) = requests
+    body = json.loads(call.content)
+    assert body["model"] == "claude-opus-4-8"
+    assert body["max_tokens"] == 1500
+    assert not body.get("output_config", {}).get("effort")
 
 
 def test_native_openai_lookup_uses_responses_and_common_citations(
@@ -344,7 +366,11 @@ def test_classification_concurrent_operations_use_separate_clients(
             * 4
         )
     assert len(requests) == 4
-    assert all(json.loads(call.content)["tools"] for call in requests)
+    for call in requests:
+        body = json.loads(call.content)
+        assert body["tools"]
+        assert body["model"] == "claude-opus-5-5"
+        assert body["max_tokens"] == 4096
 
 
 @pytest.mark.parametrize(

@@ -6,29 +6,24 @@ lookup fills in a draft you can review and edit before saving.
 
 ## Run locally
 
-Install [uv](https://docs.astral.sh/uv/getting-started/installation/) and Node.js
-24 with npm. If you use nvm, run `nvm install` from the repo root. The backend
-supports Python 3.14 and 3.15. uv defaults to Python 3.15.2, pinned in
+Install [uv](https://docs.astral.sh/uv/getting-started/installation/), GNU Make,
+and Node.js 24 with npm. If you use nvm, run `nvm install` from the repo root.
+The backend supports Python 3.14 and 3.15. uv defaults to Python 3.15.2, pinned in
 `backend/.python-version`. To use Python 3.14, run `export UV_PYTHON=3.14` in the
 backend terminal before setup and startup.
 
-In one terminal, from the repo root:
+Install the locked dependencies from the repo root:
 
 ```sh
-(cd backend && uv sync --locked)
-./backend/run.sh
+make setup
 ```
 
-In a second terminal, from the repo root:
-
-```sh
-cd frontend
-npm ci
-npm run dev
-```
+Run `make dev-backend` and `make dev-frontend` in separate terminals.
 
 Open [Scentfolio](http://localhost:5173). Vite sends `/api` requests to
 [FastAPI on port 8000](http://localhost:8000/docs).
+
+Run `make help` to list the available commands.
 
 ### Keep an existing collection
 
@@ -40,7 +35,7 @@ section appear in Collection.
 If your database lives elsewhere, run the launcher with its existing file path:
 
 ```sh
-SCENTFOLIO_DB_URL="sqlite:////absolute/path/to/scentfolio.db" ./backend/run.sh
+SCENTFOLIO_DB_URL="sqlite:////absolute/path/to/scentfolio.db" make dev-backend
 ```
 
 ### Enable AI features
@@ -56,6 +51,9 @@ backend after editing the file.
 | `openai` | Set `OPENAI_API_KEY` or `SCENTFOLIO_LLM_API_KEY` and set `SCENTFOLIO_LLM_MODEL` to a model that supports Responses web search. | OpenAI web search with source links. |
 | `openai-compatible` | Set `SCENTFOLIO_LLM_MODEL` to your provider's model ID and `SCENTFOLIO_LLM_API_KEY` to your key. The default OpenAI endpoint also accepts `OPENAI_API_KEY`. | Uses the model's knowledge. |
 
+The Anthropic defaults are Claude Opus 5.5 for lookup and family
+reclassification and Claude Haiku 5.5 for note enrichment.
+
 For a compatible API other than OpenAI, set `SCENTFOLIO_LLM_BASE_URL` to its
 API base, such as `https://generativelanguage.googleapis.com/v1beta/openai/` for
 [Gemini](https://aistudio.google.com/docs/openai) or `http://localhost:11434/v1`
@@ -69,25 +67,14 @@ You can browse and export your collection without configuring a provider.
 
 ## Check changes
 
-From `backend/`:
+From the repo root:
 
 ```sh
-uv run --locked ruff format --check .
-uv run --locked ruff check .
-SCENTFOLIO_DB_URL=sqlite:///:memory: uv run --locked pytest
+make check
 ```
 
-From `frontend/`:
-
-```sh
-npm run format:check
-npm run lint
-npm test
-npm run build
-```
-
-Run `uv run --locked ruff format .` in `backend/` and `npm run format` in
-`frontend/` to apply formatting. The test suites exercise AI-backed flows with
-mocks and run without an API key.
+Use `make format` to apply formatting, or `make test-backend` and
+`make test-frontend` to run the suites individually. The backend tests use an
+in-memory SQLite database and mock the AI calls.
 
 See the [repo guide](docs/README.md) for where to make changes.
